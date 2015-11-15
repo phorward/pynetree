@@ -297,14 +297,13 @@ class Parser(object):
 					else:
 						ret.append(res)
 
-			if len(ret) == 1:
-				ret = ret[0]
+			#if len(ret) == 1:
+			#	ret = ret[0]
 
 			if ret:
 				return ret
 
 		return None
-
 
 	def __callAction(self, item, kind):
 		if (item[0] in self.actions.keys()
@@ -372,24 +371,23 @@ if __name__ == "__main__":
 		def result(self, elem):
 			print(self.stack.pop())
 
-
-		def apush(self, elem):
-			print("PUSH %s" % elem[1])
-
-		def aadd(self, elem):
-			print("ADD")
-
-		def asub(self, elem):
-			print("SUB")
-
-		def amul(self, elem):
-			print("MUL")
-
-		def adiv(self, elem):
-			print("DIV")
-
-		def aresult(self, elem):
-			print("PRINT")
+		# def apush(self, elem):
+		# 	print("PUSH %s" % elem[1])
+		#
+		# def aadd(self, elem):
+		# 	print("ADD")
+		#
+		# def asub(self, elem):
+		# 	print("SUB")
+		#
+		# def amul(self, elem):
+		# 	print("MUL")
+		#
+		# def adiv(self, elem):
+		# 	print("DIV")
+		#
+		# def aresult(self, elem):
+		# 	print("PRINT")
 
 	# RIGHT-RECURSIVE
 	'''
@@ -449,13 +447,13 @@ if __name__ == "__main__":
 	print("--- traversal ---")
 	i.traverse(ast)
 
-	# Compile into assembly?
-	i.addAction("INT", i.apush)
-	i.addAction("mul", i.amul)
-	i.addAction("div", i.adiv)
-	i.addAction("add", i.aadd)
-	i.addAction("sub", i.asub)
-	i.addAction("calc", i.aresult)
-
-	print("--- assembly traversal ---")
-	i.traverse(ast)
+	# # Compile into assembly?
+	# i.addAction("INT", i.apush)
+	# i.addAction("mul", i.amul)
+	# i.addAction("div", i.adiv)
+	# i.addAction("add", i.aadd)
+	# i.addAction("sub", i.asub)
+	# i.addAction("calc", i.aresult)
+	#
+	# print("--- assembly traversal ---")
+	# i.traverse(ast)
