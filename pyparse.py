@@ -20,39 +20,218 @@ class MultipleDefinitionError(Exception):
 class Parser(object):
 	whitespace = r'\s+'
 
+	grm = {}
+	goal = None
 	tokens = {}
 	actions = {}
-	nodes = []
 
 	AFTER = 0
 	BEFORE = 1
 	ITERATE = 2
 
-	def __init__(self, grm, goal):
-		if not goal in grm.keys():
-			raise SymbolNotFoundError(goal)
+	def __init__(self, grm, goal = None):
+		if isinstance(grm, (str, unicode)):
+			self.fromBNF(grm)
+		else:
+			assert goal, "goal parameter required when " \
+						 "grammar is passed via dict"
 
-		# Check for correct productions
-		for n, p in grm.items():
-			if not p:
-				grm[n] = [""]
-			elif not isinstance(p, list):
-				grm[n] = [p]
+			if not goal in grm.keys():
+				raise SymbolNotFoundError(goal)
 
-			grm[n] = [x.split() for x in grm[n]]
+			# Check for well-formed production data format,
+			# and convert if necessary.
+			for n, p in grm.items():
+				if not p:
+					grm[n] = [""]
+				elif not isinstance(p, list):
+					grm[n] = [p]
 
-		# Check for correct goal
-		if not goal in grm.keys():
-			raise SymbolNotFoundError(goal)
+				grm[n] = [x.split() for x in grm[n]]
 
-		self.goal = goal
-		self.grm = grm
+			# Check for correct goal
+			if not goal in grm.keys():
+				raise SymbolNotFoundError(goal)
+
+			self.goal = goal
+			self.grm = grm
+
+	def fromBNF(self, grm):
+		"""
+		Compiles a grammar from a BNF-style grammar definition into the
+		current Parser object. This function is called internally from
+		the constructor of Parser().
+		"""
+		assert not (self.grm and self.goal), "Grammar must be empty."
+
+		def uniqueName(n):
+			while n in self.tokens.keys():
+				n += "'"
+
+			while n in self.grm.keys():
+				n += "'"
+
+			return n
+
+		def buildSymbol(nonterm, symdef):
+			if symdef[0].startswith("mod_"):
+				sym = buildSymbol(nonterm, symdef[1][0])
+
+				if "kleene" in symdef[0] or "positive" in symdef[0]:
+					oneOrMore = uniqueName(nonterm)
+					grm[oneOrMore] = [[oneOrMore, sym], [sym]]
+					sym = oneOrMore
+
+				if "optional" in symdef[0] or "kleene" in symdef[0]:
+					oneOrNone = uniqueName(nonterm)
+					grm[oneOrNone] = [[sym], []]
+					sym = oneOrNone
+
+			elif symdef[0] == "inline":
+				sym = uniqueName(nonterm)
+				grm[sym] = []
+				buildNonterminal(sym, symdef[1])
+
+			elif symdef[0] != "IDENT":
+				sym = symdef[1][1:-1]
+			else:
+				sym = symdef[1]
+
+			return sym
+
+		def buildNonterminal(nonterm, prods):
+			if isinstance(prods, tuple):
+				prods = [prods]
+
+			for p in prods:
+				if p[0] == "GOAL":
+					self.goal = nonterm
+					continue
+				elif p[0] == "EMIT":
+					self.addAction(nonterm)
+					continue
+
+				seq = []
+
+				for s in p[1]:
+					seq.append(buildSymbol(nonterm, s))
+
+				self.grm[nonterm].append(seq)
+
+		# Construct a parser for the BNF input language.
+		bnfparser = Parser({
+			"inline": "( alternation )",
+			"symbol": ["IDENT", "STRING", "inline", ""],
+			"mod_kleene": "symbol *",
+			"mod_positive": "symbol +",
+			"mod_optional": "symbol ?",
+			"modifier": ["mod_kleene", "mod_positive",
+						 	"mod_optional", "symbol"],
+			"sequence": ["sequence modifier", "modifier"],
+			"production": ["sequence", ""],
+			"alternation": ["alternation | production", "production"],
+
+			"nontermflag": ["GOAL", "EMIT"],
+			"nontermflags": ["nontermflags % nontermflag", "% nontermflag"],
+			"opt_nontermflags": ["nontermflags", ""],
+
+			"nontermdef": ["IDENT opt_nontermflags : alternation ;" ],
+
+			"termflag": ["EMIT"],
+			"termflags": ["termflags % termflag", "% termflag"],
+			"opt_termflags": ["termflags", ""],
+			"termsym": ["STRING", "REGEX"],
+			"termdef": ["$ IDENT termsym opt_termflags ;"],
+
+			"gflag": ["EMITALL", "EMITNONE"],
+			"gflags": ["gflags % gflag", "% gflag"],
+
+			"definition": ["nontermdef", "termdef", "gflags"],
+			"definitions": ["definitions definition", "definition"],
+			"grammar": "definitions"},
+
+				"grammar")
+
+		bnfparser.addToken("IDENT", r"\w+")
+		bnfparser.addToken("STRING", r"'[^']*'")
+		bnfparser.addToken("REGEX", r"/(\\.|[^\\/])*/")
+
+		bnfparser.addToken("GOAL", "goal", static=True)
+		bnfparser.addToken("EMIT", "emit", static=True)
+		bnfparser.addToken("EMITALL", "emitall", static=True)
+		bnfparser.addToken("EMITNONE", "emitnone", static=True)
+
+		bnfparser.addAction("IDENT")
+		bnfparser.addAction("STRING")
+		bnfparser.addAction("REGEX")
+		bnfparser.addAction("GOAL")
+		bnfparser.addAction("EMIT")
+		bnfparser.addAction("EMITALL")
+		bnfparser.addAction("EMITNONE")
+
+		bnfparser.addAction("inline")
+		bnfparser.addAction("mod_kleene")
+		bnfparser.addAction("mod_positive")
+		bnfparser.addAction("mod_optional")
+		bnfparser.addAction("production")
+		bnfparser.addAction("nontermdef")
+		bnfparser.addAction("termdef")
+
+		ast = bnfparser.parse(grm)
+		if not ast:
+			return
+
+		#bnfparser.dump(ast)
+
+		# Integrate all non-terminals into the grammar.
+		for d in ast:
+			if d[0] == "nontermdef":
+				sym = d[1][0][1]
+				self.grm[sym] = []
+
+		# Now build the grammar
+		emitall = False
+		for d in ast:
+			if d[0] == "EMITALL":
+				emitall = True
+				continue
+			elif d[0] == "EMITNONE":
+				emitall = False
+				continue
+			elif d[0] == "termdef":
+				sym = d[1][0][1]
+				dfn = d[1][1][1][1:-1]
+
+				if d[1][1][0] == "REGEX":
+					dfn = re.compile(dfn)
+
+				self.tokens[sym] = dfn
+
+				for flag in d[1][2:]:
+					if flag[0] == "EMIT":
+						self.addAction(sym)
+
+			else:
+				sym = d[1][0][1]
+				buildNonterminal(sym, d[1][1:])
+
+			if emitall:
+				self.addAction(sym)
+
+		# First nonterminal becomes goal, if not set by flags
+		if not self.goal:
+			for d in ast:
+				if d[0] == "nontermdef":
+					self.goal = d[1][0][1]
+					break
+
+			assert self.goal, "No nonterminal symbol in grammar"
 
 	def addToken(self, name, token, static = False):
 		if name in self.tokens.keys() or name in self.grm.keys():
 			raise MultipleDefinitionError(name)
 
-		if not static and (isinstance(token, str) or isinstance(token, unicode)):
+		if not static and isinstance(token, (str, unicode)):
 			token = re.compile(token)
 
 		self.tokens[name] = token
@@ -71,7 +250,7 @@ class Parser(object):
 		line = s.count("\n", 0, pos) + 1
 		col = s.rfind("\n", 0, pos)
 		if col < 0:
-			col = 1
+			col = pos
 		else:
 			col = pos - col
 
@@ -105,7 +284,8 @@ class Parser(object):
 
 			def consume(nterm, off):
 				"""
-				Try to consume any rule of non-terminal ``nterm`` starting at offset ``off``.
+				Try to consume any rule of non-terminal ``nterm``
+				starting at offset ``off``.
 				"""
 				for rule in self.grm[nterm]:
 					sym = None
@@ -121,12 +301,15 @@ class Parser(object):
 
 						# Is known terminal?
 						if sym in self.tokens.keys():
-							if isinstance(self.tokens[sym], str) or isinstance(self.tokens[sym], unicode):
+							if isinstance(self.tokens[sym], (str, unicode)):
 								if not s[pos:].startswith(self.tokens[sym]):
 									break
 
-								seq.append((sym, s[pos : pos + len(self.tokens[sym])]))
+								seq.append((sym,
+									s[pos : pos + len(self.tokens[sym])]))
+
 								pos += len(self.tokens[sym])
+
 							elif callable(self.tokens[sym]):
 								res = self.tokens[sym](s, pos)
 								if not res:
@@ -134,12 +317,15 @@ class Parser(object):
 
 								seq.append((sym, s[pos : pos + res]))
 								pos += res
+
 							else:
 								res = re.match(self.tokens[sym], s[pos:])
 								if not res:
 									break
 
-								seq.append((sym, s[pos : pos + len(res.group(0))]))
+								seq.append((sym,
+									s[pos : pos + len(res.group(0))]))
+
 								pos += len(res.group(0))
 
 						# Is unknown terminal?
@@ -335,7 +521,7 @@ class Parser(object):
 			return
 
 		if isinstance(ast, tuple):
-			if isinstance(ast[1], list) or isinstance(ast[1], tuple):
+			if isinstance(ast[1], (list, tuple)) or not ast[1]:
 				print("%s%s" % (level * " ", ast[0]))
 				self.dump(ast[1], level + 1)
 			else:
