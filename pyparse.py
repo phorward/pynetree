@@ -22,6 +22,7 @@ class Parser(object):
 
 	tokens = {}
 	actions = {}
+	nodes = []
 
 	AFTER = 0
 	BEFORE = 1
@@ -47,16 +48,36 @@ class Parser(object):
 		self.goal = goal
 		self.grm = grm
 
-	def addToken(self, name, regex):
+	def addToken(self, name, token, static = False):
 		if name in self.tokens.keys() or name in self.grm.keys():
 			raise MultipleDefinitionError(name)
 
-		self.tokens[name] = regex
+		if not static and (isinstance(token, str) or isinstance(token, unicode)):
+			token = re.compile(token)
+
+		self.tokens[name] = token
 
 	def addAction(self, name, func = None, kind = AFTER):
+		if not name in self.grm.keys() and not name in self.tokens.keys():
+			raise SymbolNotFoundError(name)
+
 		self.actions[name] = (kind, func)
 
-	def parse(self, s):
+	def reportError(self, s, pos):
+		res = re.match(self.whitespace, s[pos:])
+		if res:
+			pos += len(res.group(0))
+
+		line = s.count("\n", 0, pos) + 1
+		col = s.rfind("\n", 0, pos)
+		if col < 0:
+			col = 1
+		else:
+			col = pos - col
+
+		print("line %d, col %d: Parse error @ >%s<" % (line, col, s[pos:]))
+
+	def parse(self, s, reduce = True):
 
 		class Entry(object):
 			def __init__(self, res = None, pos = 0):
@@ -83,6 +104,9 @@ class Parser(object):
 		def apply(nterm, off):
 
 			def consume(nterm, off):
+				"""
+				Try to consume any rule of non-terminal ``nterm`` starting at offset ``off``.
+				"""
 				for rule in self.grm[nterm]:
 					sym = None
 					seq = []
@@ -97,12 +121,26 @@ class Parser(object):
 
 						# Is known terminal?
 						if sym in self.tokens.keys():
-							res = re.match(self.tokens[sym], s[pos:])
-							if not res:
-								break
+							if isinstance(self.tokens[sym], str) or isinstance(self.tokens[sym], unicode):
+								if not s[pos:].startswith(self.tokens[sym]):
+									break
 
-							seq.append((sym, s[pos : pos + len(res.group(0))]))
-							pos += len(res.group(0))
+								seq.append((sym, s[pos : pos + len(self.tokens[sym])]))
+								pos += len(self.tokens[sym])
+							elif callable(self.tokens[sym]):
+								res = self.tokens[sym](s, pos)
+								if not res:
+									break
+
+								seq.append((sym, s[pos : pos + res]))
+								pos += res
+							else:
+								res = re.match(self.tokens[sym], s[pos:])
+								if not res:
+									break
+
+								seq.append((sym, s[pos : pos + len(res.group(0))]))
+								pos += len(res.group(0))
 
 						# Is unknown terminal?
 						elif not sym in self.grm.keys():
@@ -218,12 +256,57 @@ class Parser(object):
 			return entry
 
 		ast = apply(self.goal, 0)
-		if not ast:
+		if not ast or ast.pos < len(s):
+			# On parse error, try to find longest match from memo cache
+			last = ast.pos if ast else 0
+
+			for (nterm, off) in memo.keys():
+				if off > last:
+					last = off
+
+			if last > 0:
+				self.reportError(s, last)
+
 			return None
 
-		return (self.goal, ast.res)
+		res = (self.goal, ast.res)
+		return self.reduce(res) if reduce else res
 
-	def __callaction(self, item, kind):
+	def reduce(self, ast):
+		if ast is None:
+			return None
+
+		if isinstance(ast, tuple):
+			if isinstance(ast[1], list):
+				if ast[0] in self.actions.keys():
+					return (ast[0], self.reduce(ast[1]))
+
+				return self.reduce(ast[1])
+
+			elif ast[0] in self.actions.keys():
+				return ast
+		else:
+			ret = []
+
+			for i in ast:
+				res = self.reduce(i)
+
+				if res:
+					if isinstance(res, list):
+						ret.extend(res)
+					else:
+						ret.append(res)
+
+			if len(ret) == 1:
+				ret = ret[0]
+
+			if ret:
+				return ret
+
+		return None
+
+
+	def __callAction(self, item, kind):
 		if (item[0] in self.actions.keys()
 			and self.actions[item[0]][0] == kind):
 			action = self.actions[item[0]][1]
@@ -237,28 +320,27 @@ class Parser(object):
 
 	def traverse(self, ast):
 		if isinstance(ast, tuple):
-			self.__callaction(ast, self.BEFORE)
+			self.__callAction(ast, self.BEFORE)
 
-			if isinstance(ast[1], list):
+			if isinstance(ast[1], list) or isinstance(ast[1], tuple):
 				self.traverse(ast[1])
 
-			self.__callaction(ast, self.AFTER)
+			self.__callAction(ast, self.AFTER)
 		else:
 			for i in ast:
 				self.traverse(i)
-				self.__callaction(ast, self.ITERATE)
+				self.__callAction(ast, self.ITERATE)
 
 	def dump(self, ast, level = 0):
 		if ast is None:
 			return
 
 		if isinstance(ast, tuple):
-			if isinstance(ast[1], list):
+			if isinstance(ast[1], list) or isinstance(ast[1], tuple):
 				print("%s%s" % (level * " ", ast[0]))
 				self.dump(ast[1], level + 1)
 			else:
 				print("%s%s (%s)" % (level * " ", ast[0], ast[1]))
-
 		else:
 			for i in ast:
 				self.dump(i, level + 1 if level > 0 else level)
@@ -271,6 +353,7 @@ if __name__ == "__main__":
 
 		def push(self, elem):
 			self.stack.append(float(elem[1]))
+
 
 		def add(self, elem):
 			self.stack.append(self.stack.pop() + self.stack.pop())
@@ -289,6 +372,24 @@ if __name__ == "__main__":
 		def result(self, elem):
 			print(self.stack.pop())
 
+
+		def apush(self, elem):
+			print("PUSH %s" % elem[1])
+
+		def aadd(self, elem):
+			print("ADD")
+
+		def asub(self, elem):
+			print("SUB")
+
+		def amul(self, elem):
+			print("MUL")
+
+		def adiv(self, elem):
+			print("DIV")
+
+		def aresult(self, elem):
+			print("PRINT")
 
 	# RIGHT-RECURSIVE
 	'''
@@ -316,20 +417,15 @@ if __name__ == "__main__":
 		"mul": "term * factor",
 		"div": "term / factor",
 		"term": ["mul", "div", "factor"],
-		#"term": ["mul", "factor"],
 		"add": "expr + term",
 		"sub": "expr - term",
 		"expr": ["add", "sub", "term"],
-		#"expr": ["add", "term"],
 		"calc": "expr"
 	}
 
-	# TEST
-	#g = { "x": "expr", "expr": ["x - INT", "INT"]}
-	#i.addToken("IDENT", r"\w+")
-
 	i = Interpreter(g, "calc")
 	i.addToken("INT", r"\d+")
+
 	i.addAction("INT", i.push)
 	i.addAction("mul", i.mul)
 	i.addAction("div", i.div)
@@ -337,6 +433,29 @@ if __name__ == "__main__":
 	i.addAction("sub", i.sub)
 	i.addAction("calc", i.result)
 
-	i.dump(i.parse("1+2* (3+   4)*5-6/7"))
-	i.traverse(i.parse("1+2*(3+4)*5-6   /7"))
+	# Parse into a parse tree
+	ptree = i.parse("1 + 2 * ( 3 + 4 ) * 5 - 6 / 7", reduce=False)
 
+	print("--- parse tree ---")
+	i.dump(ptree)
+
+	# Turn into an abstract syntax tree (ast)
+	ast = i.reduce(ptree)
+
+	print("--- abstract syntax tree ---")
+	i.dump(ast)
+
+	# Interpret the ast (works also with the syntax tree!)
+	print("--- traversal ---")
+	i.traverse(ast)
+
+	# Compile into assembly?
+	i.addAction("INT", i.apush)
+	i.addAction("mul", i.amul)
+	i.addAction("div", i.adiv)
+	i.addAction("add", i.aadd)
+	i.addAction("sub", i.asub)
+	i.addAction("calc", i.aresult)
+
+	print("--- assembly traversal ---")
+	i.traverse(ast)
