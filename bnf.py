@@ -13,14 +13,5 @@ p = Parser("$INT /\\d+/ %emit;"
 		   "sub %emit: e '-' t;"
 		   "e %goal: add | sub | t;")
 
-
-'''
-p = Parser("%emitall"
-		   "$INT /\\d+/;"
-		   "f: INT | '(' e ')';"
-		   "t: t '*' f | t '/' f | f;"
-		   "e %goal: e '+' t | e '-' t | t;")
-'''
-
 p.dump(p.parse("123+456*789"))
 
