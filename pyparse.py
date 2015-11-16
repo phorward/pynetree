@@ -1,11 +1,11 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
+# >>>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # pyParse v0.1 - A light-weight parsing toolkit written in Python
-#
 # Copyright (C) 2015 by Phorward Software Technologies, Jan Max Meyer
-# http://www.phorward.info ++ jmm<at>phorward<dot>de
+# www.phorward.info ++ jmm<at>phorward<dot>de
 # All rights reserved. See LICENSE for more information.
-#
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<<<
 
 import re
 
@@ -83,7 +83,8 @@ class Parser(object):
 
 
 		if isinstance(grm, dict):
-			# Rewrite grammar modifiers and goal according to the provided grammar
+			# Rewrite grammar modifiers and goal according to the provided
+			# grammar
 			for n, np in grm.items():
 				if n.endswith("$"):
 					n = n[:-1]
@@ -103,7 +104,8 @@ class Parser(object):
 
 					rp = []
 					for sym in p:
-						if any([len(sym) > 1 and sym.endswith(x) for x in "*+?"]):
+						if any([len(sym) > 1 and sym.endswith(x)
+									for x in "*+?"]):
 							sym = generateModifier(n, sym[:-1], sym[-1:])
 
 						rp.append(sym)
