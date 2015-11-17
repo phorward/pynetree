@@ -25,13 +25,6 @@ class MultipleDefinitionError(Exception):
 			"Multiple definition of: '%s'" % name)
 
 class Parser(object):
-	whitespace = r'\s+'
-
-	grm = {}
-	goal = None
-	tokens = {}
-	actions = {}
-
 	AFTER = 0
 	BEFORE = 1
 	ITERATE = 2
@@ -47,6 +40,12 @@ class Parser(object):
 		:param goal: This must be provided when ``grm`` contains a dict.
 		:type goal: str
 		"""
+		self.whitespace = r'\s+'
+
+		self.grammar = {}
+		self.goal = None
+		self.tokens = {}
+		self.emits = {}
 
 		def uniqueName(n):
 			"""
@@ -63,7 +62,7 @@ class Parser(object):
 			while n in self.tokens.keys():
 				n += "'"
 
-			while n in self.grm.keys():
+			while n in self.grammar.keys():
 				n += "'"
 
 			return n
@@ -71,12 +70,12 @@ class Parser(object):
 		def generateModifier(nonterm, sym, mod):
 			if mod in ["*", "+"]:
 				oneOrMore = uniqueName(nonterm)
-				self.grm[oneOrMore] = [[oneOrMore, sym], [sym]]
+				self.grammar[oneOrMore] = [[oneOrMore, sym], [sym]]
 				sym = oneOrMore
 
 			if mod in ["?", "*"]:
 				oneOrNone = uniqueName(nonterm)
-				self.grm[oneOrNone] = [[sym], []]
+				self.grammar[oneOrNone] = [[sym], []]
 				sym = oneOrNone
 
 			return sym
@@ -91,13 +90,13 @@ class Parser(object):
 					self.goal = n
 
 				if not np:
-					self.grm[n] = [""]
+					self.grammar[n] = [""]
 				elif not isinstance(np, list):
-					self.grm[n] = [np]
+					self.grammar[n] = [np]
 				else:
-					self.grm[n] = np[:]
+					self.grammar[n] = np[:]
 
-				np = self.grm[n] = [x.split() for x in self.grm[n]]
+				np = self.grammar[n] = [x.split() for x in self.grammar[n]]
 
 				rnp = []
 				for p in np:
@@ -112,7 +111,7 @@ class Parser(object):
 
 					rnp.append(rp)
 
-				self.grm[n] = rnp
+				self.grammar[n] = rnp
 		else:
 			# Construct a parser for the BNF input language.
 			bnfparser = Parser({
@@ -144,30 +143,30 @@ class Parser(object):
 				"definitions": ["definitions definition", "definition"],
 				"grammar$": "definitions"})
 
-			bnfparser.addToken("IDENT", r"\w+")
-			bnfparser.addToken("STRING", r"'[^']*'")
-			bnfparser.addToken("REGEX", r"/(\\.|[^\\/])*/")
+			bnfparser.token("IDENT", r"\w+")
+			bnfparser.token("STRING", r"'[^']*'")
+			bnfparser.token("REGEX", r"/(\\.|[^\\/])*/")
 
-			bnfparser.addToken("GOAL", "goal", static=True)
-			bnfparser.addToken("EMIT", "emit", static=True)
-			bnfparser.addToken("EMITALL", "emitall", static=True)
-			bnfparser.addToken("EMITNONE", "emitnone", static=True)
+			bnfparser.token("GOAL", "goal", static=True)
+			bnfparser.token("EMIT", "emit", static=True)
+			bnfparser.token("EMITALL", "emitall", static=True)
+			bnfparser.token("EMITNONE", "emitnone", static=True)
 
-			bnfparser.addAction("IDENT")
-			bnfparser.addAction("STRING")
-			bnfparser.addAction("REGEX")
-			bnfparser.addAction("GOAL")
-			bnfparser.addAction("EMIT")
-			bnfparser.addAction("EMITALL")
-			bnfparser.addAction("EMITNONE")
+			bnfparser.emit("IDENT")
+			bnfparser.emit("STRING")
+			bnfparser.emit("REGEX")
+			bnfparser.emit("GOAL")
+			bnfparser.emit("EMIT")
+			bnfparser.emit("EMITALL")
+			bnfparser.emit("EMITNONE")
 
-			bnfparser.addAction("inline")
-			bnfparser.addAction("mod_kleene")
-			bnfparser.addAction("mod_positive")
-			bnfparser.addAction("mod_optional")
-			bnfparser.addAction("production")
-			bnfparser.addAction("nontermdef")
-			bnfparser.addAction("termdef")
+			bnfparser.emit("inline")
+			bnfparser.emit("mod_kleene")
+			bnfparser.emit("mod_positive")
+			bnfparser.emit("mod_optional")
+			bnfparser.emit("production")
+			bnfparser.emit("nontermdef")
+			bnfparser.emit("termdef")
 
 			ast = bnfparser.parse(grm)
 			if not ast:
@@ -182,7 +181,7 @@ class Parser(object):
 											"optional":"?"}[symdef[0][4:]])
 				elif symdef[0] == "inline":
 					sym = uniqueName(nonterm)
-					self.grm[sym] = []
+					self.grammar[sym] = []
 					buildNonterminal(sym, symdef[1])
 				elif symdef[0] != "IDENT":
 					sym = symdef[1][1:-1]
@@ -200,7 +199,7 @@ class Parser(object):
 						self.goal = nonterm
 						continue
 					elif p[0] == "EMIT":
-						self.addAction(nonterm)
+						self.emit(nonterm)
 						continue
 
 					seq = []
@@ -208,7 +207,7 @@ class Parser(object):
 					for s in p[1]:
 						seq.append(buildSymbol(nonterm, s))
 
-					self.grm[nonterm].append(seq)
+					self.grammar[nonterm].append(seq)
 
 			#bnfparser.dump(ast)
 
@@ -216,7 +215,7 @@ class Parser(object):
 			for d in ast:
 				if d[0] == "nontermdef":
 					sym = d[1][0][1]
-					self.grm[sym] = []
+					self.grammar[sym] = []
 
 			# Now build the grammar
 			emitall = False
@@ -238,14 +237,14 @@ class Parser(object):
 
 					for flag in d[1][2:]:
 						if flag[0] == "EMIT":
-							self.addAction(sym)
+							self.emit(sym)
 
 				else:
 					sym = d[1][0][1]
 					buildNonterminal(sym, d[1][1:])
 
 				if emitall:
-					self.addAction(sym)
+					self.emit(sym)
 
 			# First nonterminal becomes goal, if not set by flags
 			if not self.goal:
@@ -258,20 +257,36 @@ class Parser(object):
 			raise GoalSymbolNotDefined()
 
 
-	def addToken(self, name, token, static = False):
-		if name in self.tokens.keys() or name in self.grm.keys():
+	def token(self, name, token = None, static = False):
+		if isinstance(name, list):
+			for n in name:
+				self.token(n, token=token, static=static)
+
+			return
+
+
+		if name in self.tokens.keys() or name in self.grammar.keys():
 			raise MultipleDefinitionError(name)
 
-		if not static and isinstance(token, (str, unicode)):
-			token = re.compile(token)
+		if token:
+			if not static and isinstance(token, (str, unicode)):
+				token = re.compile(token)
+		else:
+			token = str(name)
 
 		self.tokens[name] = token
 
-	def addAction(self, name, func = None, kind = AFTER):
-		if not name in self.grm.keys() and not name in self.tokens.keys():
+	def emit(self, name, action = None, kind = AFTER):
+		if isinstance(name, list):
+			for n in name:
+				self.emit(n, action=action, kind=kind)
+
+			return
+
+		if not name in self.grammar.keys() and not name in self.tokens.keys():
 			raise SymbolNotFoundError(name)
 
-		self.actions[name] = (kind, func)
+		self.emits[name] = (kind, action)
 
 	def reportError(self, s, pos):
 		res = re.match(self.whitespace, s[pos:])
@@ -313,22 +328,27 @@ class Parser(object):
 
 		def apply(nterm, off):
 
+			def skipwhitespace(s, pos):
+				# Skip over whitespace
+				if self.whitespace:
+					res = re.match(self.whitespace, s[pos:])
+					if res:
+						return pos + len(res.group(0))
+
+				return pos
+
 			def consume(nterm, off):
 				"""
 				Try to consume any rule of non-terminal ``nterm``
 				starting at offset ``off``.
 				"""
-				for rule in self.grm[nterm]:
+				for rule in self.grammar[nterm]:
 					sym = None
 					seq = []
 					pos = off
 
 					for sym in rule:
-						# Skip over whitespace
-						if self.whitespace:
-							res = re.match(self.whitespace, s[pos:])
-							if res:
-								pos += len(res.group(0))
+						pos = skipwhitespace(s, pos)
 
 						# Is known terminal?
 						if sym in self.tokens.keys():
@@ -360,10 +380,11 @@ class Parser(object):
 								pos += len(res.group(0))
 
 						# Is unknown terminal?
-						elif not sym in self.grm.keys():
+						elif not sym in self.grammar.keys():
 							if not s[pos:].startswith(sym):
 								break
 
+							#seq.append((sym, s[pos : pos + len(sym)]))
 							pos += len(sym)
 
 						# Is nonterminal?
@@ -380,6 +401,7 @@ class Parser(object):
 						sym = None
 
 					if not sym:
+						pos = skipwhitespace(s, pos)
 						return (seq, pos)
 
 				return (None, off)
@@ -495,12 +517,12 @@ class Parser(object):
 
 		if isinstance(ast, tuple):
 			if isinstance(ast[1], list):
-				if ast[0] in self.actions.keys():
+				if ast[0] in self.emits.keys():
 					return (ast[0], self.reduce(ast[1]))
 
 				return self.reduce(ast[1])
 
-			elif ast[0] in self.actions.keys():
+			elif ast[0] in self.emits.keys():
 				return ast
 		else:
 			ret = []
@@ -523,9 +545,9 @@ class Parser(object):
 		return None
 
 	def __callAction(self, item, kind):
-		if (item[0] in self.actions.keys()
-			and self.actions[item[0]][0] == kind):
-			action = self.actions[item[0]][1]
+		if (item[0] in self.emits.keys()
+			and self.emits[item[0]][0] == kind):
+			action = self.emits[item[0]][1]
 
 			if callable(action):
 				action(item)
@@ -564,12 +586,11 @@ class Parser(object):
 
 if __name__ == "__main__":
 
-	class Interpreter(Parser):
+	class Calculator(Parser):
 		stack = []
 
 		def push(self, elem):
 			self.stack.append(float(elem[1]))
-
 
 		def add(self, elem):
 			self.stack.append(self.stack.pop() + self.stack.pop())
@@ -587,24 +608,6 @@ if __name__ == "__main__":
 
 		def result(self, elem):
 			print(self.stack.pop())
-
-		# def apush(self, elem):
-		# 	print("PUSH %s" % elem[1])
-		#
-		# def aadd(self, elem):
-		# 	print("ADD")
-		#
-		# def asub(self, elem):
-		# 	print("SUB")
-		#
-		# def amul(self, elem):
-		# 	print("MUL")
-		#
-		# def adiv(self, elem):
-		# 	print("DIV")
-		#
-		# def aresult(self, elem):
-		# 	print("PRINT")
 
 	# RIGHT-RECURSIVE
 	'''
@@ -638,39 +641,28 @@ if __name__ == "__main__":
 		"calc$": "expr"
 	}
 
-	i = Interpreter(g)
-	i.addToken("INT", r"\d+")
+	calc = Calculator(g)
+	calc.token("INT", r"\d+")
 
-	i.addAction("INT", i.push)
-	i.addAction("mul", i.mul)
-	i.addAction("div", i.div)
-	i.addAction("add", i.add)
-	i.addAction("sub", i.sub)
-	i.addAction("calc", i.result)
+	calc.emit("INT", calc.push)
+	calc.emit("mul", calc.mul)
+	calc.emit("div", calc.div)
+	calc.emit("add", calc.add)
+	calc.emit("sub", calc.sub)
+	calc.emit("calc", calc.result)
 
 	# Parse into a parse tree
-	ptree = i.parse("1 + 2 * ( 3 + 4 ) * 5 - 6 / 7", reduce=False)
+	ptree = calc.parse("1 + 2 * ( 3 + 4 ) * 5 - 6 / 7", reduce=False)
 
-	print("--- parse tree ---")
-	i.dump(ptree)
+	print("--- entire parse tree ---")
+	calc.dump(ptree)
 
 	# Turn into an abstract syntax tree (ast)
-	ast = i.reduce(ptree)
+	ast = calc.reduce(ptree)
 
 	print("--- abstract syntax tree ---")
-	i.dump(ast)
+	calc.dump(ast)
 
-	# Interpret the ast (works also with the syntax tree!)
+	# Interpret the AST (works also with the entire parse tree!)
 	print("--- traversal ---")
-	i.traverse(ast)
-
-	# # Compile into assembly?
-	# i.addAction("INT", i.apush)
-	# i.addAction("mul", i.amul)
-	# i.addAction("div", i.adiv)
-	# i.addAction("add", i.aadd)
-	# i.addAction("sub", i.asub)
-	# i.addAction("calc", i.aresult)
-	#
-	# print("--- assembly traversal ---")
-	# i.traverse(ast)
+	calc.traverse(ast)

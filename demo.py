@@ -14,13 +14,7 @@ p = Parser({
 	"calc$": "expr"
 })
 
-p.addToken("INT", r"\d+")
-
-p.addAction("INT")
-p.addAction("mul")
-p.addAction("div")
-p.addAction("add")
-p.addAction("sub")
-p.addAction("calc")
+p.token("INT", r"\d+")
+p.emit(["INT", "mul", "div", "add", "sub", "calc"])
 
 p.dump(p.parse("1 + 2 * (3 + 4) + 5"))

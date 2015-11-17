@@ -21,14 +21,8 @@ The following example already defines a simple grammar and runs a parser on the 
 		"calc$": "expr"
 	})
 
-	p.addToken("INT", r"\d+")
-
-	p.addAction("INT")
-	p.addAction("mul")
-	p.addAction("div")
-	p.addAction("add")
-	p.addAction("sub")
-	p.addAction("calc")
+	p.token("INT", r"\d+")
+	p.emit(["INT", "mul", "div", "add", "sub", "calc"])
 
 	p.dump(p.parse("1 + 2 * (3 + 4) + 5"))
 
@@ -46,17 +40,16 @@ When this is ran from the console, a proper abstract syntax tree is printed:
 			  INT (4)
 		INT (5)
 
-
 Grammars may also be expressed in a libphorward-similar BNF-like definition language, including AST construction information:
 
-	p = Parser("$INT /\\d+/ %emit;"
-			   "f: INT | '(' e ')';"
-			   "mul %emit: t '*' f;"
-			   "div %emit: t '/' f;"
-			   "t: mul | div | f;"
-			   "add %emit: e '+' t;"
-			   "sub %emit: e '-' t;"
-			   "e %goal: add | sub | t;")
+	p = Parser("""	$INT /\\d+/ %emit;
+					f: INT | '(' e ')';
+					mul %emit: t '*' f;
+					div %emit: t '/' f;
+					t: mul | div | f;
+					add %emit: e '+' t;
+					sub %emit: e '-' t;
+					e %goal: add | sub | t;""")
 
 	p.dump(p.parse("1 + 2 * (3 + 4) + 5"))
 
