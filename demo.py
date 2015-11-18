@@ -1,7 +1,7 @@
 #-*- coding: utf-8 -*-
 # Demo parser from the README.
 
-from pyparse import Parser
+from pynetree import Parser
 
 p = Parser({
 	"factor": ["INT", "( expr )"],

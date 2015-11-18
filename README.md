@@ -2,13 +2,13 @@
 DESCRIPTION
 ===========
 
-pyParse is a simple, light-weight parsing toolkit for Python.
+pynetree is a simple, light-weight parsing toolkit for and written in Python.
 
-The toolkit has been developed in the course of implementing a top-down parser supporting left-recursive grammars. Therefore, pyParse is a parser that implements a modified version of the well-known packrat parsing algorithm, but with the approach to provide true BNF-styled grammars, as known from other parsing frameworks.
+The toolkit has been developed in the course of implementing a top-down parser supporting left-recursive grammars. Therefore, pynetree is a parser that implements a modified version of the well-known packrat parsing algorithm, but with the approach to provide true BNF-styled grammars, as known from other parsing frameworks.
 
 The following example already defines a simple grammar and runs a parser on the input "1+2*(3+4)+5":
 
-	from pyparse import Parser
+	from pynetree import Parser
 
 	p = Parser({
 		"factor": ["INT", "( expr )"],
@@ -55,7 +55,7 @@ Grammars may also be expressed in a libphorward-similar BNF-like definition lang
 
 Above two instructions generate exactly the same output like above.
 
-The pyParse toolkit is currently under heavy development, so changes in the function names and syntax may occur and follow. Have fun!
+The pynetree project is currently under heavy development, so changes in the function names and syntax may occur and follow. Have fun!
 
 
 FEATURES
@@ -69,15 +69,15 @@ The parsing toolkit so far provides
 - Functions for abstract syntax tree (AST) definition and traversion
 - Lexical analysis is performed via regular expressions (re), string or as callables
 
-Please check out https://bitbucket.org/codepilot/pyparse to get the newest updates on pyParse.
+Please check out https://bitbucket.org/codepilot/pynetree to get the newest updates on pynetree.
 
 
 AUTHOR
 ======
 
-The Phorward Toolkit is developed and maintained by Jan Max Meyer, Phorward Software Technologies.
+pynetree is developed and maintained by Jan Max Meyer, Phorward Software Technologies.
 
-It is the result of a several years experience in parser development systems, and is currently some kind of sub-project from a C-library called libphorward (https://bitbucket.org/codepilot/phorward). Therefore, the BNF-styled grammar definition language of both pyParse and libphorward are similar.
+It is the result of a several years experience in parser development systems, and is currently some kind of sub-project from a C-library called libphorward (https://bitbucket.org/codepilot/phorward). Therefore, the BNF-styled grammar definition language of both pynetree and libphorward are similar.
 
 Help of any kind to extend and improve this product is always appreciated.
 

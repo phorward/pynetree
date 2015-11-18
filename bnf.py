@@ -2,7 +2,7 @@
 #-*- coding: utf-8 -*-
 # This is a demo for parsing a grammar from a BNF-notation.
 
-from pyparse import Parser
+from pynetree import Parser
 
 p = Parser("""	$INT /\\d+/ %emit;
 				f: INT | '(' e ')';

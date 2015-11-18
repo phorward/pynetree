@@ -1,7 +1,7 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
 # >>>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# pyParse v0.1 - A light-weight parsing toolkit written in Python
+# pynetree v0.1 - A light-weight parsing toolkit written in Python
 # Copyright (C) 2015 by Phorward Software Technologies, Jan Max Meyer
 # www.phorward.info ++ jmm<at>phorward<dot>de
 # All rights reserved. See LICENSE for more information.
