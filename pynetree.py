@@ -116,17 +116,22 @@ class Parser(object):
 			# Construct a parser for the BNF input language.
 			bnfparser = Parser({
 				"inline": "( alternation )",
-				"symbol": ["IDENT", "STRING", "inline", ""],
+				"symbol": ["IDENT", "STRING", "TOKEN", "inline", ""],
 				"mod_kleene": "symbol *",
 				"mod_positive": "symbol +",
 				"mod_optional": "symbol ?",
 				"modifier": ["mod_kleene", "mod_positive",
 								"mod_optional", "symbol"],
 				"sequence": ["sequence modifier", "modifier"],
-				"production": ["sequence", ""],
+
+				"prodflag": ["EMIT", "NOEMIT"],
+				"prodflags": ["prodflags % prodflag+", "% prodflag+"],
+
+				"production": ["sequence? prodflags?"],
+
 				"alternation": ["alternation | production", "production"],
 
-				"nontermflag": ["GOAL", "EMIT"],
+				"nontermflag": ["GOAL", "EMIT", "NOEMIT"],
 				"nontermflags": ["nontermflags % nontermflag", "% nontermflag"],
 
 				"nontermdef": ["IDENT nontermflags? : alternation ;" ],
@@ -145,28 +150,18 @@ class Parser(object):
 
 			bnfparser.token("IDENT", r"\w+")
 			bnfparser.token("STRING", r"'[^']*'")
+			bnfparser.token("TOKEN", r'"[^"]*"')
 			bnfparser.token("REGEX", r"/(\\.|[^\\/])*/")
 
 			bnfparser.token("GOAL", "goal", static=True)
 			bnfparser.token("EMIT", "emit", static=True)
+			bnfparser.token("NOEMIT", "noemit", static=True)
 			bnfparser.token("EMITALL", "emitall", static=True)
 			bnfparser.token("EMITNONE", "emitnone", static=True)
 
-			bnfparser.emit("IDENT")
-			bnfparser.emit("STRING")
-			bnfparser.emit("REGEX")
-			bnfparser.emit("GOAL")
-			bnfparser.emit("EMIT")
-			bnfparser.emit("EMITALL")
-			bnfparser.emit("EMITNONE")
-
-			bnfparser.emit("inline")
-			bnfparser.emit("mod_kleene")
-			bnfparser.emit("mod_positive")
-			bnfparser.emit("mod_optional")
-			bnfparser.emit("production")
-			bnfparser.emit("nontermdef")
-			bnfparser.emit("termdef")
+			bnfparser.emit(["IDENT", "STRING", "TOKEN", "REGEX", "GOAL", "EMIT", "NOEMIT", "EMITALL", "EMITNONE"])
+			bnfparser.emit(["inline", "mod_kleene", "mod_positive", "mod_optional",
+							"production",  "nontermdef", "termdef"])
 
 			ast = bnfparser.parse(grm)
 			if not ast:
@@ -183,6 +178,10 @@ class Parser(object):
 					sym = uniqueName(nonterm)
 					self.grammar[sym] = []
 					buildNonterminal(sym, symdef[1])
+				elif symdef[0] == "TOKEN":
+					sym = symdef[1][1:-1]
+					self.tokens[sym] = sym
+					self.emits[sym] = (self.AFTER, None)
 				elif symdef[0] != "IDENT":
 					sym = symdef[1][1:-1]
 				else:
@@ -205,6 +204,10 @@ class Parser(object):
 					seq = []
 
 					for s in p[1]:
+						if s[0] == "EMIT":
+							self.emits["%s[%d]" % (nonterm, len(self.grammar[nonterm]))] = (None, self.AFTER)
+							continue
+
 						seq.append(buildSymbol(nonterm, s))
 
 					self.grammar[nonterm].append(seq)
@@ -284,7 +287,9 @@ class Parser(object):
 			return
 
 		if not name in self.grammar.keys() and not name in self.tokens.keys():
-			raise SymbolNotFoundError(name)
+			res = re.match(r"(\w+)\[\d+\]", ast[0])
+			if not res or not res.group(1) in self.grammar.keys():
+				raise SymbolNotFoundError(name)
 
 		self.emits[name] = (kind, action)
 
@@ -342,6 +347,7 @@ class Parser(object):
 				Try to consume any rule of non-terminal ``nterm``
 				starting at offset ``off``.
 				"""
+				count = 0
 				for rule in self.grammar[nterm]:
 					sym = None
 					seq = []
@@ -402,7 +408,14 @@ class Parser(object):
 
 					if not sym:
 						pos = skipwhitespace(s, pos)
+
+						# Insert production-based node?
+						if ("%s[%d]" % (nterm, count)) in self.emits:
+							seq = [("%s[%d]" % (nterm, count), seq)]
+
 						return (seq, pos)
+
+					count += 1
 
 				return (None, off)
 
@@ -518,6 +531,12 @@ class Parser(object):
 		if isinstance(ast, tuple):
 			if isinstance(ast[1], list):
 				if ast[0] in self.emits.keys():
+
+					# Remove production node format, if available
+					res = re.match(r"(\w+)\[\d+\]", ast[0])
+					if res:
+						return (res.group(1), self.reduce(ast[1]))
+
 					return (ast[0], self.reduce(ast[1]))
 
 				return self.reduce(ast[1])
