@@ -205,7 +205,7 @@ class Parser(object):
 
 					for s in p[1]:
 						if s[0] == "EMIT":
-							self.emits["%s[%d]" % (nonterm, len(self.grammar[nonterm]))] = (None, self.AFTER)
+							self.emit((nonterm, len(self.grammar[nonterm])))
 							continue
 
 						seq.append(buildSymbol(nonterm, s))
@@ -286,10 +286,13 @@ class Parser(object):
 
 			return
 
-		if not name in self.grammar.keys() and not name in self.tokens.keys():
-			res = re.match(r"(\w+)\[\d+\]", ast[0])
-			if not res or not res.group(1) in self.grammar.keys():
-				raise SymbolNotFoundError(name)
+		if isinstance(name, tuple):
+			testname = name[0]
+		else:
+			testname = name
+
+		if not testname in self.grammar.keys() and not testname in self.tokens.keys():
+			raise SymbolNotFoundError(testname)
 
 		self.emits[name] = (kind, action)
 
@@ -410,8 +413,8 @@ class Parser(object):
 						pos = skipwhitespace(s, pos)
 
 						# Insert production-based node?
-						if ("%s[%d]" % (nterm, count)) in self.emits:
-							seq = [("%s[%d]" % (nterm, count), seq)]
+						if (nterm, count) in self.emits:
+							seq = [((nterm, count), seq)]
 
 						return (seq, pos)
 
@@ -531,12 +534,6 @@ class Parser(object):
 		if isinstance(ast, tuple):
 			if isinstance(ast[1], list):
 				if ast[0] in self.emits.keys():
-
-					# Remove production node format, if available
-					res = re.match(r"(\w+)\[\d+\]", ast[0])
-					if res:
-						return (res.group(1), self.reduce(ast[1]))
-
 					return (ast[0], self.reduce(ast[1]))
 
 				return self.reduce(ast[1])
@@ -593,11 +590,13 @@ class Parser(object):
 			return
 
 		if isinstance(ast, tuple):
+			node = ast[0][0] if isinstance(ast[0], tuple) else ast[0]
+
 			if isinstance(ast[1], (list, tuple)) or not ast[1]:
-				print("%s%s" % (level * " ", ast[0]))
+				print("%s%s" % (level * " ", node))
 				self.dump(ast[1], level + 1)
 			else:
-				print("%s%s (%s)" % (level * " ", ast[0], ast[1]))
+				print("%s%s (%s)" % (level * " ", node, ast[1]))
 		else:
 			for i in ast:
 				self.dump(i, level + 1 if level > 0 else level)
