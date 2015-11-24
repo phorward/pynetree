@@ -177,7 +177,7 @@ class Parser(object):
 				elif symdef[0] == "inline":
 					sym = uniqueName(nonterm)
 					self.grammar[sym] = []
-					buildNonterminal(sym, symdef[1])
+					buildNonterminal(sym, symdef[1], False)
 				elif symdef[0] == "TOKEN":
 					sym = symdef[1][1:-1]
 					self.tokens[sym] = sym
@@ -189,28 +189,51 @@ class Parser(object):
 
 				return sym
 
-			def buildNonterminal(nonterm, prods):
+			def buildNonterminal(nonterm, prods, allEmit):
 				if isinstance(prods, tuple):
 					prods = [prods]
 
+				emits = []
+
 				for p in prods:
+
 					if p[0] == "GOAL":
 						self.goal = nonterm
 						continue
+
 					elif p[0] == "EMIT":
-						self.emit(nonterm)
+						allEmit = True
+						continue
+
+					elif p[0] == "NOEMIT":
+						allEmit = False
 						continue
 
 					seq = []
+					emit = allEmit
 
 					for s in p[1]:
+
 						if s[0] == "EMIT":
-							self.emit((nonterm, len(self.grammar[nonterm])))
+							emit = True
+							continue
+
+						elif s[0] == "NOEMIT":
+							emit = False
 							continue
 
 						seq.append(buildSymbol(nonterm, s))
 
+					if emit:
+						emits.append((nonterm, len(self.grammar[nonterm])))
+
 					self.grammar[nonterm].append(seq)
+
+				if len(self.grammar[nonterm]) == len(emits):
+					self.emit(nonterm)
+				else:
+					for i in emits:
+						self.emit(i)
 
 			#bnfparser.dump(ast)
 
@@ -242,12 +265,12 @@ class Parser(object):
 						if flag[0] == "EMIT":
 							self.emit(sym)
 
+					if emitall:
+						self.emit(sym)
+
 				else:
 					sym = d[1][0][1]
-					buildNonterminal(sym, d[1][1:])
-
-				if emitall:
-					self.emit(sym)
+					buildNonterminal(sym, d[1][1:], emitall)
 
 			# First nonterminal becomes goal, if not set by flags
 			if not self.goal:
