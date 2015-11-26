@@ -14,6 +14,7 @@ p = Parser({
 	"calc$": "expr"
 })
 
+p.ignore(r"\s+") #ignore whitespace
 p.token("INT", r"\d+")
 p.emit(["INT", "mul", "div", "add", "sub", "calc"])
 

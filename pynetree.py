@@ -25,9 +25,7 @@ class MultipleDefinitionError(Exception):
 			"Multiple definition of: '%s'" % name)
 
 class Parser(object):
-	AFTER = 0
-	BEFORE = 1
-	ITERATE = 2
+	AUTOTOKNAME = "$%03d"
 
 	def __init__(self, grm):
 		"""
@@ -40,11 +38,10 @@ class Parser(object):
 		:param goal: This must be provided when ``grm`` contains a dict.
 		:type goal: str
 		"""
-		self.whitespace = r'\s+'
-
 		self.grammar = {}
 		self.goal = None
 		self.tokens = {}
+		self.ignores = []
 		self.emits = {}
 
 		def uniqueName(n):
@@ -116,7 +113,7 @@ class Parser(object):
 			# Construct a parser for the BNF input language.
 			bnfparser = Parser({
 				"inline": "( alternation )",
-				"symbol": ["IDENT", "STRING", "TOKEN", "inline", ""],
+				"symbol": ["IDENT", "STRING", "TOKEN", "REGEX", "inline", ""],
 				"mod_kleene": "symbol *",
 				"mod_positive": "symbol +",
 				"mod_optional": "symbol ?",
@@ -136,10 +133,11 @@ class Parser(object):
 
 				"nontermdef": ["IDENT nontermflags? : alternation ;" ],
 
-				"termflag": ["EMIT"],
+				"termflag": ["EMIT", "IGNORE"],
 				"termflags": ["termflags % termflag", "% termflag"],
-				"termsym": ["STRING", "REGEX"],
-				"termdef": ["$ IDENT termsym termflags? ;"],
+				"termsym": ["STRING", "REGEX", "IDENT"],
+				"opt_ident": ["IDENT", ""],
+				"termdef": ["$ opt_ident termsym termflags? ;"],
 
 				"gflag": ["EMITALL", "EMITNONE"],
 				"gflags": ["gflags % gflag", "% gflag"],
@@ -148,6 +146,7 @@ class Parser(object):
 				"definitions": ["definitions definition", "definition"],
 				"grammar$": "definitions"})
 
+			bnfparser.ignore(r"\s+")
 			bnfparser.token("IDENT", r"\w+")
 			bnfparser.token("STRING", r"'[^']*'")
 			bnfparser.token("TOKEN", r'"[^"]*"')
@@ -158,10 +157,12 @@ class Parser(object):
 			bnfparser.token("NOEMIT", "noemit", static=True)
 			bnfparser.token("EMITALL", "emitall", static=True)
 			bnfparser.token("EMITNONE", "emitnone", static=True)
+			bnfparser.token("IGNORE", r"ignore|skip")
 
-			bnfparser.emit(["IDENT", "STRING", "TOKEN", "REGEX", "GOAL", "EMIT", "NOEMIT", "EMITALL", "EMITNONE"])
+			bnfparser.emit(["IDENT", "STRING", "TOKEN", "REGEX", "GOAL", "EMIT",
+							"NOEMIT", "EMITALL", "EMITNONE", "IGNORE"])
 			bnfparser.emit(["inline", "mod_kleene", "mod_positive", "mod_optional",
-							"production",  "nontermdef", "termdef"])
+							"production",  "nontermdef", "termdef", "opt_ident"])
 
 			ast = bnfparser.parse(grm)
 			if not ast:
@@ -177,19 +178,23 @@ class Parser(object):
 				elif symdef[0] == "inline":
 					sym = uniqueName(nonterm)
 					self.grammar[sym] = []
-					buildNonterminal(sym, symdef[1], False)
+					buildNonterminal(sym, symdef[1])
 				elif symdef[0] == "TOKEN":
 					sym = symdef[1][1:-1]
 					self.tokens[sym] = sym
-					self.emits[sym] = (self.AFTER, None)
-				elif symdef[0] != "IDENT":
+					self.emits[sym] = None
+				elif symdef[0] == "REGEX":
+					sym = uniqueName(nonterm.upper())
+					self.token(sym, symdef[1][1:-1])
+					self.emits[sym] = None
+				elif symdef[0] == "STRING":
 					sym = symdef[1][1:-1]
 				else:
 					sym = symdef[1]
 
 				return sym
 
-			def buildNonterminal(nonterm, prods, allEmit):
+			def buildNonterminal(nonterm, prods, allEmit = False):
 				if isinstance(prods, tuple):
 					prods = [prods]
 
@@ -253,17 +258,30 @@ class Parser(object):
 					emitall = False
 					continue
 				elif d[0] == "termdef":
-					sym = d[1][0][1]
-					dfn = d[1][1][1][1:-1]
+					if d[1][0][1]:
+						sym = d[1][0][1][0][1]
+					else:
+						sym = self.AUTOTOKNAME % (len(self.tokens.keys()) + 1)
 
-					if d[1][1][0] == "REGEX":
-						dfn = re.compile(dfn)
+					kind = d[1][1][0]
+
+					if kind == "STRING":
+						dfn = d[1][1][1][1:-1]
+					elif kind == "REGEX":
+						dfn = re.compile(d[1][1][1][1:-1])
+					else:
+						dfn = d[1][1][1]
+
+					if sym in self.tokens.keys():
+						raise MultipleDefinitionError(sym)
 
 					self.tokens[sym] = dfn
 
 					for flag in d[1][2:]:
 						if flag[0] == "EMIT":
 							self.emit(sym)
+						elif flag[0] == "IGNORE":
+							self.ignores.append(sym)
 
 					if emitall:
 						self.emit(sym)
@@ -290,7 +308,6 @@ class Parser(object):
 
 			return
 
-
 		if name in self.tokens.keys() or name in self.grammar.keys():
 			raise MultipleDefinitionError(name)
 
@@ -302,10 +319,15 @@ class Parser(object):
 
 		self.tokens[name] = token
 
-	def emit(self, name, action = None, kind = AFTER):
+	def ignore(self, token, static = False):
+		name = self.AUTOTOKNAME % len(self.tokens.keys())
+		self.token(name, token, static)
+		self.ignores.append(name)
+
+	def emit(self, name, action = None):
 		if isinstance(name, list):
 			for n in name:
-				self.emit(n, action=action, kind=kind)
+				self.emit(n, action)
 
 			return
 
@@ -317,19 +339,13 @@ class Parser(object):
 		if not testname in self.grammar.keys() and not testname in self.tokens.keys():
 			raise SymbolNotFoundError(testname)
 
-		self.emits[name] = (kind, action)
+		self.emits[name] = action
 
-	def reportError(self, s, pos):
-		res = re.match(self.whitespace, s[pos:])
-		if res:
-			pos += len(res.group(0))
-
+	def error(self, s, pos):
 		line = s.count("\n", 0, pos) + 1
+
 		col = s.rfind("\n", 0, pos)
-		if col < 0:
-			col = pos
-		else:
-			col = pos - col
+		col = pos if col < 0 else pos - col
 
 		print("line %d, col %d: Parse error @ >%s<" % (line, col, s[pos:]))
 
@@ -359,12 +375,37 @@ class Parser(object):
 
 		def apply(nterm, off):
 
-			def skipwhitespace(s, pos):
-				# Skip over whitespace
-				if self.whitespace:
-					res = re.match(self.whitespace, s[pos:])
+			def scantoken(sym, s, pos):
+				if isinstance(self.tokens[sym], (str, unicode)):
+					if s.startswith(self.tokens[sym], pos):
+						return len(self.tokens[sym])
+
+				elif callable(self.tokens[sym]):
+					res = self.tokens[sym](s, pos)
 					if res:
-						return pos + len(res.group(0))
+						return res
+
+				else:
+					res = re.match(self.tokens[sym], s[pos:])
+					if res:
+						return len(res.group(0))
+
+				return -1
+
+			def scanwhitespace(s, pos):
+				# Skip over whitespace
+				while True:
+					i = 0
+					for sym in self.ignores:
+						res = scantoken(sym, s, pos)
+						if res > 0:
+							pos += res
+							break
+
+						i += 1
+
+					if i == len(self.ignores):
+						break
 
 				return pos
 
@@ -380,36 +421,18 @@ class Parser(object):
 					pos = off
 
 					for sym in rule:
-						pos = skipwhitespace(s, pos)
+						pos = scanwhitespace(s, pos)
 
 						# Is known terminal?
 						if sym in self.tokens.keys():
-							if isinstance(self.tokens[sym], (str, unicode)):
-								if not s[pos:].startswith(self.tokens[sym]):
-									break
+							res = scantoken(sym, s, pos)
+							if res <= 0:
+								break
 
-								seq.append((sym,
-									s[pos : pos + len(self.tokens[sym])]))
+							#if sym in self.emits.keys():
+							seq.append((sym, s[pos:pos + res]))
 
-								pos += len(self.tokens[sym])
-
-							elif callable(self.tokens[sym]):
-								res = self.tokens[sym](s, pos)
-								if not res:
-									break
-
-								seq.append((sym, s[pos : pos + res]))
-								pos += res
-
-							else:
-								res = re.match(self.tokens[sym], s[pos:])
-								if not res:
-									break
-
-								seq.append((sym,
-									s[pos : pos + len(res.group(0))]))
-
-								pos += len(res.group(0))
+							pos += res
 
 						# Is unknown terminal?
 						elif not sym in self.grammar.keys():
@@ -427,13 +450,14 @@ class Parser(object):
 								break
 
 							pos = res.pos
-							if res.res:
+
+							if res.res is not None:
 								seq.append((sym, res.res))
 
 						sym = None
 
 					if not sym:
-						pos = skipwhitespace(s, pos)
+						pos = scanwhitespace(s, pos)
 
 						# Insert production-based node?
 						if (nterm, count) in self.emits:
@@ -543,7 +567,7 @@ class Parser(object):
 					last = off
 
 			if last > 0:
-				self.reportError(s, last)
+				self.error(s, last)
 
 			return None
 
@@ -575,38 +599,28 @@ class Parser(object):
 					else:
 						ret.append(res)
 
-			#if len(ret) == 1:
-			#	ret = ret[0]
-
 			if ret:
 				return ret
 
 		return None
 
-	def __callAction(self, item, kind):
-		if (item[0] in self.emits.keys()
-			and self.emits[item[0]][0] == kind):
-			action = self.emits[item[0]][1]
-
-			if callable(action):
-				action(item)
-			elif not action is None:
-				print(action)
-			else:
-				print(item[1])
-
 	def traverse(self, ast):
 		if isinstance(ast, tuple):
-			self.__callAction(ast, self.BEFORE)
-
 			if isinstance(ast[1], list) or isinstance(ast[1], tuple):
 				self.traverse(ast[1])
 
-			self.__callAction(ast, self.AFTER)
+			action = self.emits[ast[0]]
+
+			if callable(action):
+				action(ast)
+			elif action:
+				print(action)
+			else:
+				print(ast[1])
+
 		else:
 			for i in ast:
 				self.traverse(i)
-				self.__callAction(ast, self.ITERATE)
 
 	def dump(self, ast, level = 0):
 		if ast is None:
@@ -684,6 +698,7 @@ if __name__ == "__main__":
 
 	calc = Calculator(g)
 	calc.token("INT", r"\d+")
+	calc.ignore(r"\s+")
 
 	calc.emit("INT", calc.push)
 	calc.emit("mul", calc.mul)

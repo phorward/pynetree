@@ -4,7 +4,8 @@
 
 from pynetree import Parser
 
-p = Parser("""	$INT /\\d+/ %emit;
+p = Parser("""	$/\\s+/ %ignore;
+				$INT /\\d+/ %emit;
 				f: INT | '(' e ')';
 				mul: t "*" f %emit;
 				div: t "/" f %emit;
@@ -13,5 +14,5 @@ p = Parser("""	$INT /\\d+/ %emit;
 				sub: e "-" t %emit;
 				e %goal: add | sub | t;""")
 
-p.dump(p.parse("123+456*789"))
+p.dump(p.parse("123 + 456 * 789"))
 

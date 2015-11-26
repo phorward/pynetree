@@ -13,47 +13,46 @@ The following example already defines a simple grammar and runs a parser on the 
 	p = Parser({
 		"factor": ["INT", "( expr )"],
 		"mul": "term * factor",
-		"div": "term / factor",
-		"term": ["mul", "div", "factor"],
+		"term": ["mul", "factor"],
 		"add": "expr + term",
-		"sub": "expr - term",
-		"expr": ["add", "sub", "term"],
+		"expr": ["add", "term"],
 		"calc$": "expr"
 	})
 
+	p.ignore(r"\s+")
 	p.token("INT", r"\d+")
-	p.emit(["INT", "mul", "div", "add", "sub", "calc"])
+	p.emit(["INT", "mul", "add"])
 
 	p.dump(p.parse("1 + 2 * (3 + 4) + 5"))
 
 
-When this is ran from the console, a proper abstract syntax tree is printed:
+When this program is ran from a console, a proper abstract syntax tree is printed:
 
-	calc
+	add
 	  add
-		add
-		  INT (1)
-		  mul
-			INT (2)
-			add
-			  INT (3)
-			  INT (4)
-		INT (5)
+		INT (1)
+		mul
+		  INT (2)
+		  add
+			INT (3)
+			INT (4)
+	  INT (5)
 
-Grammars may also be expressed in a libphorward-similar BNF-like definition language, including AST construction information:
 
+Grammars may also be expressed in a BNF-styled grammar definition language, including AST construction information.
+The code below produces exactly the same parser with the same output as shown above.
+
+	from pynetree import Parser
 	p = Parser("""	$INT /\\d+/ %emit;
+					$/\\s+/ %skip;
 					f: INT | '(' e ')';
-					mul %emit: t '*' f;
-					div %emit: t '/' f;
-					t: mul | div | f;
-					add %emit: e '+' t;
-					sub %emit: e '-' t;
-					e %goal: add | sub | t;""")
+					mul: t '*' f %emit;
+					t: mul | f;
+					add: e '+' t %emit;
+					e %goal: add | t;""")
 
 	p.dump(p.parse("1 + 2 * (3 + 4) + 5"))
 
-Above two instructions generate exactly the same output like above.
 
 The pynetree project is currently under heavy development, so changes in the function names and syntax may occur and follow. Have fun!
 
@@ -77,9 +76,9 @@ AUTHOR
 
 pynetree is developed and maintained by Jan Max Meyer, Phorward Software Technologies.
 
-It is the result of a several years experience in parser development systems, and is currently some kind of sub-project from a C-library called libphorward (https://bitbucket.org/codepilot/phorward). Therefore, the BNF-styled grammar definition language of both pynetree and libphorward are similar.
+This project is one result of a several years experience in parser development systems, and is currently worked out as some kind of sub-project of a C-library called libphorward (https://bitbucket.org/codepilot/phorward), which is also developed at Phorward Software Technologies. Therefore, the BNF-styled grammar definition language of both pynetree and libphorward are similar.
 
-Help of any kind to extend and improve this product is always appreciated.
+Help of any kind to extend and improve or enhance this product in any kind or way is always appreciated.
 
 
 LICENSING
