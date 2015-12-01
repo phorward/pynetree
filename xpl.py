@@ -1,5 +1,8 @@
+#!/usr/bin/env python
 #-*- coding: utf-8 -*-
-# The famous XPL programming language.
+# The famous XPL programming language example.
+# This little toy C-style language was a demonstraton in the
+# UniCC Parser Generator and has been ported to pynetree here.
 
 from pynetree import Parser
 
@@ -92,5 +95,4 @@ while( bottles > 0 )
     else
         print( bottles + " more bottles of beer on the wall." );
 }
-
 """))

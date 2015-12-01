@@ -1,11 +1,21 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #-*- coding: utf-8 -*-
 # >>>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# pynetree v0.1 - A light-weight parsing toolkit written in Python
+# pynetree - A light-weight parsing toolkit written in Python
 # Copyright (C) 2015 by Phorward Software Technologies, Jan Max Meyer
 # www.phorward.info ++ jmm<at>phorward<dot>de
 # All rights reserved. See LICENSE for more information.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<<<
+
+"""
+pynetree is a simple, light-weight parsing toolkit for and written in Python.
+"""
+
+__author__ = "Jan Max Meyer"
+__copyright__ = "Copyright 2015, Phorward Software Technologies"
+__version__ = "0.1"
+__license__ = "MIT"
+__status__ = "Production"
 
 import re
 
@@ -25,18 +35,23 @@ class MultipleDefinitionError(Exception):
 			"Multiple definition of: '%s'" % name)
 
 class Parser(object):
+	"""
+	The main parser class that implements a pynetree parser.
+
+	The class provides functions for defining the grammar,
+	parsing input, dumping and traversing the resulting parse
+	tree or abstract syntax tree.
+	"""
 	AUTOTOKNAME = "$%03d"
 
 	def __init__(self, grm):
 		"""
-		Constructs a new parser object.
+		Constructs a new pynetree Parser object.
 
 		:param grm: The grammar to be used; This can either be a dictionary of
 					symbols and relating productions, or a string that is
 					expressed in the BNF-styled grammar definition parser.
 		:type grm: dict | str
-		:param goal: This must be provided when ``grm`` contains a dict.
-		:type goal: str
 		"""
 		self.grammar = {}
 		self.goal = None
@@ -48,7 +63,7 @@ class Parser(object):
 			"""
 			Generates a unique symbol name from ``n``, by adding
 			single-quotation characters to the end of ``n`` until
-			there is no symbol with such name.
+			no symbol with such a name exists in the grammar.
 
 			:param n: The basename to become unique.
 			:type n: str
@@ -159,10 +174,12 @@ class Parser(object):
 			bnfparser.token("EMITNONE", "emitnone", static=True)
 			bnfparser.token("IGNORE", r"ignore|skip")
 
-			bnfparser.emit(["IDENT", "STRING", "TOKEN", "REGEX", "GOAL", "EMIT",
-							"NOEMIT", "EMITALL", "EMITNONE", "IGNORE"])
-			bnfparser.emit(["inline", "mod_kleene", "mod_positive", "mod_optional",
-							"production",  "nontermdef", "termdef", "opt_ident"])
+			bnfparser.emit(["IDENT", "STRING", "TOKEN", "REGEX", "GOAL",
+							"EMIT", "NOEMIT", "EMITALL", "EMITNONE",
+							"IGNORE"])
+			bnfparser.emit(["inline", "mod_kleene", "mod_positive",
+							"mod_optional", "production",  "nontermdef",
+							"termdef", "opt_ident"])
 
 			ast = bnfparser.parse(grm)
 			if not ast:
@@ -336,7 +353,8 @@ class Parser(object):
 		else:
 			testname = name
 
-		if not testname in self.grammar.keys() and not testname in self.tokens.keys():
+		if (not testname in self.grammar.keys()
+			and not testname in self.tokens.keys()):
 			raise SymbolNotFoundError(testname)
 
 		self.emits[name] = action
