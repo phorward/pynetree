@@ -329,7 +329,7 @@ class Parser(object):
 			raise MultipleDefinitionError(name)
 
 		if token:
-			if not static and isinstance(token, (str, unicode)):
+			if not static and isinstance(token, str):
 				token = re.compile(token)
 		else:
 			token = str(name)
@@ -394,7 +394,7 @@ class Parser(object):
 		def apply(nterm, off):
 
 			def scantoken(sym, s, pos):
-				if isinstance(self.tokens[sym], (str, unicode)):
+				if isinstance(self.tokens[sym], str):
 					if s.startswith(self.tokens[sym], pos):
 						return len(self.tokens[sym])
 
@@ -404,8 +404,8 @@ class Parser(object):
 						return res
 
 				else:
-					res = re.match(self.tokens[sym], s[pos:])
-					if res:
+					res = self.tokens[sym].match(s[pos:])
+					if res and s.startswith(res.group(0), pos):
 						return len(res.group(0))
 
 				return -1
@@ -432,6 +432,7 @@ class Parser(object):
 				Try to consume any rule of non-terminal ``nterm``
 				starting at offset ``off``.
 				"""
+				#print("consume", nterm, off)
 				count = 0
 				for rule in self.grammar[nterm]:
 					sym = None
