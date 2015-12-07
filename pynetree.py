@@ -309,7 +309,7 @@ class Parser(object):
 
 			# First nonterminal becomes goal, if not set by flags
 			if not self.goal:
-				for d in ast:
+				for d in reversed(ast):
 					if d[0] == "nontermdef":
 						self.goal = d[1][0][1]
 						break
