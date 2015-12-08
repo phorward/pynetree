@@ -367,7 +367,7 @@ class Parser(object):
 
 		print("line %d, col %d: Parse error @ >%s<" % (line, col, s[pos:]))
 
-	def parse(self, s, reduce = True):
+	def parse(self, s):
 
 		class Entry(object):
 			def __init__(self, res = None, pos = 0):
@@ -448,8 +448,8 @@ class Parser(object):
 							if res <= 0:
 								break
 
-							#if sym in self.emits.keys():
-							seq.append((sym, s[pos:pos + res]))
+							if sym in self.emits.keys():
+								seq.append((sym, s[pos:pos + res]))
 
 							pos += res
 
@@ -471,7 +471,12 @@ class Parser(object):
 							pos = res.pos
 
 							if res.res is not None:
-								seq.append((sym, res.res))
+								if sym in self.emits.keys():
+									seq.append((sym, res.res))
+								elif isinstance(res.res, tuple):
+									seq.append(res.res)
+								else:
+									seq += res.res
 
 						sym = None
 
@@ -479,7 +484,7 @@ class Parser(object):
 						pos = scanwhitespace(s, pos)
 
 						# Insert production-based node?
-						if (nterm, count) in self.emits:
+						if (nterm, count) in self.emits.keys():
 							seq = [((nterm, count), seq)]
 
 						return (seq, pos)
@@ -590,38 +595,10 @@ class Parser(object):
 
 			return None
 
-		res = (self.goal, ast.res)
-		return self.reduce(res) if reduce else res
+		if self.goal in self.emits.keys():
+			return (self.goal, ast.res)
 
-	def reduce(self, ast):
-		if ast is None:
-			return None
-
-		if isinstance(ast, tuple):
-			if isinstance(ast[1], list):
-				if ast[0] in self.emits.keys():
-					return (ast[0], self.reduce(ast[1]))
-
-				return self.reduce(ast[1])
-
-			elif ast[0] in self.emits.keys():
-				return ast
-		else:
-			ret = []
-
-			for i in ast:
-				res = self.reduce(i)
-
-				if res:
-					if isinstance(res, list):
-						ret.extend(res)
-					else:
-						ret.append(res)
-
-			if ret:
-				return ret
-
-		return None
+		return ast.res
 
 	def traverse(self, ast):
 		if isinstance(ast, tuple):
@@ -727,13 +704,7 @@ if __name__ == "__main__":
 	calc.emit("calc", calc.result)
 
 	# Parse into a parse tree
-	ptree = calc.parse("1 + 2 * ( 3 + 4 ) * 5 - 6 / 7", reduce=False)
-
-	print("--- entire parse tree ---")
-	calc.dump(ptree)
-
-	# Turn into an abstract syntax tree (ast)
-	ast = calc.reduce(ptree)
+	ast = calc.parse("1 + 2 * ( 3 + 4 ) * 5 - 6 / 7")
 
 	print("--- abstract syntax tree ---")
 	calc.dump(ast)
