@@ -64,12 +64,6 @@ class Parser(object):
 			Generates a unique symbol name from ``n``, by adding
 			single-quotation characters to the end of ``n`` until
 			no symbol with such a name exists in the grammar.
-
-			:param n: The basename to become unique.
-			:type n: str
-
-			:return: The next unique symbol name.
-			:rtype: str
 			"""
 			while n in self.tokens.keys():
 				n += "'"
@@ -188,6 +182,10 @@ class Parser(object):
 				raise SyntaxError()
 
 			def buildSymbol(nonterm, symdef):
+				"""
+				AST traversal function for symbol level in the BNF-grammar.
+				"""
+
 				if symdef[0].startswith("mod_"):
 					sym = buildSymbol(nonterm, symdef[1][0])
 					sym = generateModifier(nonterm, sym,
@@ -217,6 +215,9 @@ class Parser(object):
 				return sym
 
 			def buildNonterminal(nonterm, prods, allEmit = False):
+				"""
+				AST traversal function for nonterminals in the BNF-grammar.
+				"""
 				if isinstance(prods, tuple):
 					prods = [prods]
 
@@ -326,6 +327,22 @@ class Parser(object):
 
 
 	def token(self, name, token = None, static = False):
+		"""
+		Adds a new terminal token ``name`` to the parser.
+
+		:param name: The unique, identifying name of the token to be added.
+		:type name: str
+
+		:param token: The token definition that is registered with ``name``.
+			If this is a str, and ``static`` is False, it will be interpreted
+			as regular expression. If omitted, ``token`` is set to ``name`` as
+			static string.
+		:type token: str | re | callable
+
+		:param static: If True, ``token`` is direcly taken as is, and not
+			interpreted as a regex str.
+		"""
+
 		if isinstance(name, list):
 			for n in name:
 				self.token(n, token=token, static=static)
@@ -344,11 +361,37 @@ class Parser(object):
 		self.tokens[name] = token
 
 	def ignore(self, token, static = False):
+		"""
+		Adds a new ignore terminal (whitespace) to the parser.
+
+		:param token: The token definition of the whitespace symbol.
+			If this is a str, and ``static`` is False, it will be interpreted
+			as regular expression.
+		:type token: str | re | callable
+
+		:param static: If True, ``token`` is direcly taken as is, and not
+			interpreted as a regex str.
+		"""
+
 		name = self.AUTOTOKNAME % len(self.tokens.keys())
 		self.token(name, token, static)
 		self.ignores.append(name)
 
 	def emit(self, name, action = None):
+		"""
+		Defines which symbols of the grammar shall be emitted in the
+		generated, abstract syntax tree (AST).
+
+		:param name: The name of the symbol that shall be emitted.
+			Alternatively, a list of symbol names is accepted.
+		:type name: str | list
+
+		:param action: An action that can be associated with the
+			emitter during AST traversal. This can be omitted, if
+			the traversal function is manually written.
+		:type action: callable
+		"""
+
 		if isinstance(name, list):
 			for n in name:
 				self.emit(n, action)
@@ -367,6 +410,16 @@ class Parser(object):
 		self.emits[name] = action
 
 	def error(self, s, pos):
+		"""
+		Print a parse error, that oocurs on input ``s`` at offset ``pos``.
+		This function can be overridden for specific operations.
+
+		:param s: The entire input string.
+		:type s: str
+
+		:param pos: The offset where the syntax error occurs.
+		:param pos: int | long
+		"""
 		line = s.count("\n", 0, pos) + 1
 
 		col = s.rfind("\n", 0, pos)
@@ -375,6 +428,21 @@ class Parser(object):
 		print("line %d, col %d: Parse error @ >%s<" % (line, col, s[pos:]))
 
 	def parse(self, s):
+		"""
+		Parse ``s`` with the currently defined grammar.
+
+		This invokes the parser on a given input, and returns the
+		abstract syntax tree of this input on success.
+
+		The parser is implemented as a modified packrat parsing algorithm,
+		with support of left-recursive grammars.
+
+		:param s: The input string to be parsed.
+		:param s: str
+
+		:returns: Abstract syntax tree, None on error.
+		:rtype: list | tuple
+		"""
 
 		class Entry(object):
 			def __init__(self, res = None, pos = 0):
@@ -399,8 +467,14 @@ class Parser(object):
 		heads = {}
 
 		def apply(nterm, off):
+			"""
+			Apply nonterminal ``nterm`` on offset ``off``.
+			"""
 
 			def scantoken(sym, s, pos):
+				"""
+				Scan for a token that was previously defined with token().
+				"""
 				if isinstance(self.tokens[sym], str):
 					if s.startswith(self.tokens[sym], pos):
 						return len(self.tokens[sym])
@@ -418,7 +492,9 @@ class Parser(object):
 				return -1
 
 			def scanwhitespace(s, pos):
-				# Skip over whitespace
+				"""
+				Scan for whitespace that was previously defined by ignore().
+				"""
 				while True:
 					i = 0
 					for sym in self.ignores:
