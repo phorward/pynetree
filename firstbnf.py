@@ -2,12 +2,12 @@
 #-*- coding: utf-8 -*-
 from pynetree import Parser
 
-p = Parser("""	$INT /\\d+/ %emit;
+p = Parser("""
 				$/\\s+/ %skip;
-				f: INT | '(' e ')';
+				f: [0-9] | '(' e ')';
 				mul: t '*' f %emit;
 				t: mul | f;
 				add: e '+' t %emit;
 				e: add | t;""")
 
-p.dump(p.parse("1 + 2 * (3 + 4) + 5"))
+p.dump(p.parse("1 + 2 * (3+4) +  5"))

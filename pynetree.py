@@ -128,7 +128,8 @@ class Parser(object):
 			# Construct a parser for the BNF input language.
 			bnfparser = Parser({
 				"inline": "( alternation )",
-				"symbol": ["IDENT", "STRING", "TOKEN", "REGEX", "inline", ""],
+				"symbol": ["IDENT", "STRING", "TOKEN", "REGEX", "CCL",
+						   	"inline", ""],
 				"mod_kleene": "symbol *",
 				"mod_positive": "symbol +",
 				"mod_optional": "symbol ?",
@@ -163,6 +164,7 @@ class Parser(object):
 
 			bnfparser.ignore(r"\s+")
 			bnfparser.token("IDENT", r"\w+")
+			bnfparser.token("CCL", r"\[[^\]]*\]")
 			bnfparser.token("STRING", r"'[^']*'")
 			bnfparser.token("TOKEN", r'"[^"]*"')
 			bnfparser.token("REGEX", r"/(\\.|[^\\/])*/")
@@ -174,8 +176,8 @@ class Parser(object):
 			bnfparser.token("EMITNONE", "emitnone", static=True)
 			bnfparser.token("IGNORE", r"ignore|skip")
 
-			bnfparser.emit(["IDENT", "STRING", "TOKEN", "REGEX", "GOAL",
-							"EMIT", "NOEMIT", "EMITALL", "EMITNONE",
+			bnfparser.emit(["IDENT", "STRING", "TOKEN", "REGEX", "CCL",
+							"GOAL", "EMIT", "NOEMIT", "EMITALL", "EMITNONE",
 							"IGNORE"])
 			bnfparser.emit(["inline", "mod_kleene", "mod_positive",
 							"mod_optional", "production",  "nontermdef",
@@ -204,6 +206,9 @@ class Parser(object):
 					sym = uniqueName(nonterm.upper())
 					self.token(sym, symdef[1][1:-1])
 					self.emits[sym] = None
+				elif symdef[0] == "CCL":
+					sym = uniqueName(nonterm.upper())
+					self.token(sym, symdef[1])
 				elif symdef[0] == "STRING":
 					sym = symdef[1][1:-1]
 				else:
@@ -458,7 +463,6 @@ class Parser(object):
 							if not s[pos:].startswith(sym):
 								break
 
-							#seq.append((sym, s[pos : pos + len(sym)]))
 							pos += len(sym)
 
 						# Is nonterminal?
@@ -470,13 +474,12 @@ class Parser(object):
 
 							pos = res.pos
 
-							if res.res is not None:
-								if sym in self.emits.keys():
-									seq.append((sym, res.res))
-								elif isinstance(res.res, tuple):
-									seq.append(res.res)
-								else:
-									seq += res.res
+							if sym in self.emits.keys():
+								seq.append((sym, res.res))
+							elif isinstance(res.res, tuple):
+								seq.append(res.res)
+							elif isinstance(res.res, list):
+								seq += res.res
 
 						sym = None
 
@@ -502,7 +505,7 @@ class Parser(object):
 					head.evaluate = list(head.involved)
 
 					res, pos = consume(nterm, pos)
-					if not res or pos <= entry.pos:
+					if res is None or pos <= entry.pos:
 						break
 
 					entry.res = res
@@ -533,7 +536,7 @@ class Parser(object):
 					return Entry(entry.res.seed, entry.pos)
 
 				entry.res = entry.res.seed
-				if not entry.res:
+				if entry.res is None:
 					return Entry(None, entry.pos)
 
 				return lrgrow(entry, head)
