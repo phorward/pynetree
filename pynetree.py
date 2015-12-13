@@ -151,7 +151,7 @@ class Parser(object):
 
 				"termflag": ["EMIT", "IGNORE"],
 				"termflags": ["termflags % termflag", "% termflag"],
-				"termsym": ["STRING", "REGEX", "IDENT"],
+				"termsym": ["STRING", "REGEX", "CCL", "IDENT"],
 				"opt_ident": ["IDENT", ""],
 				"termdef": ["$ opt_ident termsym termflags? ;"],
 
@@ -291,6 +291,8 @@ class Parser(object):
 						dfn = d[1][1][1][1:-1]
 					elif kind == "REGEX":
 						dfn = re.compile(d[1][1][1][1:-1])
+					elif kind == "CCL":
+						dfn = re.compile(d[1][1][1])
 					else:
 						dfn = d[1][1][1]
 

@@ -2,9 +2,9 @@
 #-*- coding: utf-8 -*-
 from pynetree import Parser
 
-p = Parser("""
+p = Parser("""	$int /[0-9]+/ %emit;
 				$/\\s+/ %skip;
-				f: [0-9] | '(' e ')';
+				f: int | '(' e ')';
 				mul: t '*' f %emit;
 				t: mul | f;
 				add: e '+' t %emit;
