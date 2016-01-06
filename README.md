@@ -2,7 +2,7 @@
 DESCRIPTION
 ===========
 
-pynetree is a simple, light-weight parsing toolkit for and written in Python.
+pynetree is a simple, light-weight parsing toolkit for Python.
 
 The toolkit has been developed in the course of implementing a top-down parser
 supporting left-recursive grammars. Therefore, pynetree is a parser that
@@ -11,7 +11,7 @@ with the approach to provide true BNF-styled grammars, as known from other
 parsing frameworks.
 
 The following example already defines a simple grammar and runs a parser on
-the input "1+2*(3+4)+5":
+the input `1 + 2 * ( 3 + 4 ) + 5`:
 
 	from pynetree import Parser
 
@@ -45,11 +45,15 @@ printed:
 	  INT (5)
 
 
-Grammars may also be expressed in a BNF-styled grammar definition language,
-including AST construction information. The code below produces exactly the
-same parser with the same output as shown above.
+Grammars may also be expressed in pynetree's own BNF-styled grammar definition
+language. This language allows to configure the entire parser behavor, including
+token and whitespace symbol declaration and informations from which rules the
+abstract syntax tree that is build during the parse process is constructed.
+The following example code below produces exactly the same parser with the same
+output as shown above, but all is defined within the grammar definition step.
 
 	from pynetree import Parser
+
 	p = Parser("""	$INT /\\d+/ %emit;
 					$/\\s+/ %skip;
 					f: INT | '(' e ')';
@@ -83,12 +87,14 @@ The parsing toolkit so far provides
 Please check out https://bitbucket.org/codepilot/pynetree to get the newest
 updates on the pynetree project.
 
+
 REQUIREMENTS
 ------------
 
 pynetree is written in pure Python. It runs natively with Python 2 and 3.
-The only import done so far is the build-in `re` module for regular
-expressions.
+The only import done so far is the build-in `re` module for regular expression
+support.
+
 
 GETTING STARTED
 ===============
@@ -102,35 +108,10 @@ To do this, it simply is required to create an object of the class
 language that shall be parsed as parameter. This grammar can be expressed
 in two different ways:
 
-1. 	As dict specifying the non-terminals als keys and their left-hand sides
-	as the values (where the left-hand sides can be provided as list of strings)
-
-	Example:
-
-		p = Parser({"factor": "TOK",      # factor has one rule with a
-										  # named terminal TOK, which has to
-										  # be defined later.
-					"expr$":              # expr has two rules, and is the goal
-						["expr + factor",
-						"expr - factor"]}
-
-	Every left-hand side is split to its particular tokens, e.g. "expr", "+"
-	and "term". If one token references another non-terminal or a defined
-	token, this will be assumed, else the token is directly expected, like the
-	"+" in this case.
-
-	To handle tokens, whitespace, the AST traversal rules and more, calling
-	subsequent functions of the Parser-class is required after a grammar has
-	been specified in this way.
-
-	For example, this must be done for the token INT, which should be the string
-	"num":
-
-		p.token("TOK", "num", static=True)
-
-	And if we want to see expr and TOK in the ast, we have to call
-
-		p.emit(["expr", "TOK"])
+1. 	As dict specifying the non-terminals as keys and their left-hand sides
+	as the values (where the left-hand sides can be provided as list of
+	strings). This requires much more configuration on the parsers token and
+	emitting behavior, but is the Python-specifc way.
 
 2.	The other, more flexible method for specifying a grammar is pynetree's own
 	grammar definition language, which itself internally is implemented using
@@ -138,18 +119,38 @@ in two different ways:
 
 	This language is oriented on the classic BNF-style, but supports several
 	syntactical elements to quickly define a language and its behavior for
-	token definition and AST traversal.
+	token definition and abstract syntax tree (AST) construction.
 
-	Calling the constructor this way
+After the grammar is generally defined, the parser can be fine-tuned or extended
+to various features.
 
-		p = Parser("""
-			$TOK 'num' %emit;
-			factor: TOK;
-			term %emit: expr '+' term | expr - term;""")
+- `Parser.token()` is used to define named terminal symbols, which can be
+  regular expression patterns, static strings or callables.
+- `Parser.ignore()` is used for the definition of whitespace tokens, which are
+  generally allowed between all other tokens.
+- `Parser.emit()` is used to define symbols (both non-terminal or terminal)
+  that are emitted as nodes in AST. Terminal symbols will always define leafs
+  in the AST, where non-terminals can emit leafs if no sub-ordered symbols are
+  emitted. (In a full parse tree, non-terminals will never be leafs, but nodes).
 
-	and we are done: It produces exactly the same configuration like above.
+The final parsing of a string is performed by the function `Parser.parse()`.
+This function returns the AST for the parsed input. ASTs consist of tuples - or
+in case of a sequence of multiple elements in the same level - lists of tuples,
+where every tuple of a non-terminal results in
 
-	Some things to know about the grammar definition language:
+	("non-terminal", <child nodes>)
+
+and every terminal results in
+
+	("terminal", "parsed string that matched")
+
+To walk on such an AST, the function `Parser.dump()` can be used to print the
+AST in a well-formatted style, or `Parser.traverse()` to possible call emitting
+functions on every node. It is also helpful to use these functions as templates
+for other, more specialized tree traversal and walker functions.
+
+Please take a look at the many examples to get familar with these functions and
+possibilities.
 
 
 AUTHOR
@@ -159,14 +160,13 @@ pynetree is developed and maintained by Jan Max Meyer and the company
 Phorward Software Technologies.
 
 This project is one result of a several years experience in parser development
-systems, and is currently worked out as some kind of sub-project of a library
-called libphorward, which is written in C and focuses on C program development.
-See https://bitbucket.org/codepilot/phorward for more information.
+tools, and is currently worked out as some kind of sister-project of a library
+called libphorward, that focuses on the C programming language. Therefore, the
+BNF-styled grammar definition language of both pynetree and libphorward are
+similar and should provide the same interface for both parser generation tools.
+Take a look at https://bitbucket.org/codepilot/phorward for more information.
 
-Therefore, the BNF-styled grammar definition language of both pynetree and
-libphorward are similar and should provide the same interface so far.
-
-Help of any kind to extend and improve or enhance this product in any kind or
+Help of any kind to extend and improve or enhance this project in any kind or
 way is always appreciated.
 
 
