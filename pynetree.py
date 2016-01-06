@@ -2,7 +2,7 @@
 #-*- coding: utf-8 -*-
 # >>>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # pynetree - A light-weight parsing toolkit written in Python
-# Copyright (C) 2015 by Phorward Software Technologies, Jan Max Meyer
+# Copyright (C) 2015, 2016 by Phorward Software Technologies, Jan Max Meyer
 # www.phorward.info ++ jmm<at>phorward<dot>de
 # All rights reserved. See LICENSE for more information.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<<<
@@ -12,7 +12,7 @@ pynetree is a simple, light-weight parsing toolkit for and written in Python.
 """
 
 __author__ = "Jan Max Meyer"
-__copyright__ = "Copyright 2015, Phorward Software Technologies"
+__copyright__ = "Copyright 2015-2016, Phorward Software Technologies"
 __version__ = "0.1"
 __license__ = "MIT"
 __status__ = "Production"
