@@ -13,7 +13,7 @@ pynetree is a simple, light-weight parsing toolkit for and written in Python.
 
 __author__ = "Jan Max Meyer"
 __copyright__ = "Copyright 2015-2016, Phorward Software Technologies"
-__version__ = "0.1"
+__version__ = "0.2"
 __license__ = "MIT"
 __status__ = "Production"
 
@@ -681,23 +681,33 @@ class Parser(object):
 
 		return ast.res
 
-	def traverse(self, ast):
+	def traverse(self, ast, prefix = "_"):
+		if not ast:
+			return
+
 		if isinstance(ast, tuple):
 			if isinstance(ast[1], list) or isinstance(ast[1], tuple):
-				self.traverse(ast[1])
+				self.traverse(ast[1], prefix = prefix)
 
-			action = self.emits[ast[0]]
+			# Check for (prefixed) callback function in self
+			nname = "%s%s" % (prefix, ast[0][0] if isinstance(ast[0], tuple) else ast[0])
 
-			if callable(action):
-				action(ast)
-			elif action:
-				print(action)
+			if nname and nname in dir(self) and callable(getattr(self, nname)):
+				getattr(self, nname)(ast)
 			else:
-				print(ast[1])
+				# Try other ways of traversal.
+				action = self.emits[ast[0]]
+
+				if callable(action):
+					action(ast)
+				elif action:
+					print(nname)
+				else:
+					print(action)
 
 		else:
 			for i in ast:
-				self.traverse(i)
+				self.traverse(i, prefix = prefix)
 
 	def dump(self, ast, level = 0):
 		if ast is None:
@@ -721,24 +731,24 @@ if __name__ == "__main__":
 	class Calculator(Parser):
 		stack = []
 
-		def push(self, elem):
-			self.stack.append(float(elem[1]))
+		def _INT(self, ast):
+			self.stack.append(float(ast[1]))
 
-		def add(self, elem):
+		def _add(self, ast):
 			self.stack.append(self.stack.pop() + self.stack.pop())
 
-		def sub(self, elem):
+		def _sub(self, ast):
 			x = self.stack.pop()
 			self.stack.append(self.stack.pop() - x)
 
-		def mul(self, elem):
+		def _mul(self, ast):
 			self.stack.append(self.stack.pop() * self.stack.pop())
 
-		def div(self, elem):
+		def _div(self, ast):
 			x = self.stack.pop()
 			self.stack.append(self.stack.pop() / x)
 
-		def result(self, elem):
+		def _calc(self, ast):
 			print(self.stack.pop())
 
 	# RIGHT-RECURSIVE
@@ -777,12 +787,12 @@ if __name__ == "__main__":
 	calc.token("INT", r"\d+")
 	calc.ignore(r"\s+")
 
-	calc.emit("INT", calc.push)
-	calc.emit("mul", calc.mul)
-	calc.emit("div", calc.div)
-	calc.emit("add", calc.add)
-	calc.emit("sub", calc.sub)
-	calc.emit("calc", calc.result)
+	calc.emit("INT")
+	calc.emit("mul")
+	calc.emit("div")
+	calc.emit("add")
+	calc.emit("sub")
+	calc.emit("calc")
 
 	# Parse into a parse tree
 	ast = calc.parse("1 + 2 * ( 3 + 4 ) * 5 - 6 / 7")
@@ -790,6 +800,6 @@ if __name__ == "__main__":
 	print("--- abstract syntax tree ---")
 	calc.dump(ast)
 
-	# Interpret the AST (works also with the entire parse tree!)
+	# Traverse (interpret) the parse tree
 	print("--- traversal ---")
 	calc.traverse(ast)
