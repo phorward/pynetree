@@ -1,6 +1,11 @@
+![Image of a Tree](pine.jpg)
+
+pynetree
+========
+A light-weight parsing toolkit written in Python.
 
 DESCRIPTION
-===========
+-----------
 
 pynetree is a simple, light-weight parsing toolkit for Python.
 
@@ -72,7 +77,7 @@ Have fun!
 
 
 FEATURES
---------
+~~~~~~~~
 
 The parsing toolkit so far provides
 
@@ -89,7 +94,7 @@ updates on the pynetree project.
 
 
 REQUIREMENTS
-------------
+~~~~~~~~~~~~
 
 pynetree is written in pure Python. It runs natively with Python 2 and 3.
 The only import done so far is the build-in `re` module for regular expression
@@ -97,7 +102,7 @@ support.
 
 
 GETTING STARTED
-===============
+---------------
 
 pynetree is not a parser generator in classic terms like yacc or bison. It
 can be seen as a library to directly express and parse the desired grammar
@@ -154,7 +159,7 @@ possibilities.
 
 
 AUTHOR
-======
+------
 
 pynetree is developed and maintained by Jan Max Meyer and the company
 Phorward Software Technologies.
@@ -171,7 +176,7 @@ way is always appreciated.
 
 
 LICENSING
-=========
+---------
 
 Copyright (C) 2015, 2016 by Phorward Software Technologies, Jan Max Meyer.
 
