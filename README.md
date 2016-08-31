@@ -1,8 +1,11 @@
 ![Image of a Tree](pine.jpg)
 
 **pynetree**: *A light-weight parsing toolkit written in Python*
+
 Version: 0.3
+
 Release: beta
+
 
 # DESCRIPTION #
 
