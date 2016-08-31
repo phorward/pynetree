@@ -1,17 +1,17 @@
 ![Image of a Tree](pine.jpg)
 
-# pynetree #
+# PYNETREE #
 
 pynetree is a simple, light-weight parsing toolkit for Python.
 
 The toolkit has been developed in the course of implementing a top-down parser
 supporting left-recursive grammars. Therefore, pynetree is a parser that
-implements a modified version of the well-known packrat parsing algorithm, but
-with the approach to provide true BNF-styled grammars, as known from other
-parsing frameworks.
+implements a modified version of the packrat parsing algorithm, but with the
+approach to provide true BNF-styled grammars, as known from other parser
+development tools and frameworks.
 
-The following example already defines a simple grammar and runs a parser on
-the input `1 + 2 * ( 3 + 4 ) + 5`:
+The following code example already defines a simple grammar and runs a parser
+on the input `1 + 2 * ( 3 + 4 ) + 5`:
 
 	from pynetree import Parser
 
@@ -31,8 +31,8 @@ the input `1 + 2 * ( 3 + 4 ) + 5`:
 	p.dump(p.parse("1 + 2 * (3 + 4) + 5"))
 
 
-When this program is ran from a console, a proper abstract syntax tree is
-printed:
+When this program is ran from a console, a proper abstract syntax tree will
+be generated and printed:
 
 	add
 	  add
@@ -45,10 +45,12 @@ printed:
 	  INT (5)
 
 
-Grammars may also be expressed in pynetree's own BNF-styled grammar definition
-language. This language allows to configure the entire parser behavor, including
-token and whitespace symbol declaration and informations from which rules the
-abstract syntax tree that is build during the parse process is constructed.
+Grammars may also be expressed in pynetree's self-hosted BNF-styled grammar
+definition language. This language allows to configure the entire parser
+behavior, including token and whitespace symbol declaration and information
+from which rules the abstract syntax tree that is build during the parse
+process is constructed.
+
 The following example code below produces exactly the same parser with the same
 output as shown above, but all is defined within the grammar definition step.
 
@@ -65,33 +67,34 @@ output as shown above, but all is defined within the grammar definition step.
 	p.dump(p.parse("1 + 2 * (3 + 4) + 5"))
 
 
-The pynetree project is currently under heavy development, so changes in the
-function names and syntax may occur and follow.
+The pynetree project is currently under heavy development, so that changes in
+API, function names, syntax or semantics may occur and need existing projects
+to be ported.
 
 Have fun!
 
 
 ## FEATURES ##
 
-The parsing toolkit so far provides
+The pynetree parser development toolkit so far provides
 
 - A top-down packrat parser with support of direct and indirect
-  left recursive grammars
-- Mostly linear parsing time, even for left-recursive grammars
-- Grammars can be expressed as dict objects or parsed from a BNF grammar
-- Functions for abstract syntax tree (AST) definition and traversal
-- Lexical analysis is performed via regular expressions (re), string or
-  as call-ables
+  left recursive grammars.
+- Mostly linear parsing time, even for left-recursive grammars.
+- Grammars can be expressed as dict objects or by a BNF-grammar.
+- Support functions for generating and traversing abstract syntax trees (AST).
+- Lexical analysis can be performed via regular expressions (re), string or
+  by Python call-ables.
 
-Please check out https://bitbucket.org/codepilot/pynetree to get the newest
-updates on the pynetree project.
+Please check out http://pynetree.org to get help and the newest updates on
+the pynetree project.
 
 
 ## REQUIREMENTS ##
 
 pynetree is written in pure Python. It runs natively with Python 2 and 3.
 The only import done so far is the build-in `re` module for regular expression
-support.
+support. Nothing else is required!
 
 
 # GETTING STARTED #
@@ -131,22 +134,23 @@ to various features.
   emitted. (In a full parse tree, non-terminals will never be leafs, but nodes).
 
 The final parsing of a string is performed by the function `Parser.parse()`.
-This function returns the AST for the parsed input. ASTs consist of tuples - or
-in case of a sequence of multiple elements in the same level - lists of tuples,
-where every tuple of a non-terminal results in
 
-	("non-terminal", <child nodes>)
-
-and every terminal results in
-
-	("terminal", "parsed string that matched")
+This function returns the AST for the parsed input. AST are consisting of
+`pynetree.Node` objects or - in case of a sequence of multiple elements in the
+same level - lists of `pynetree.Node` objects.
 
 To walk on such an AST, the function `Parser.dump()` can be used to print the
 AST in a well-formatted style, or `Parser.traverse()` to possible call emitting
 functions on every node. It is also helpful to use these functions as templates
 for other, more specialized tree traversal and walker functions.
 
-Please take a look at the many examples to get familar with these functions and
+- `Parser.parse()` parses an input string on the given grammar.
+- `Parser.dump()` dumps an abstract syntax tree generated by `Parser.parse()`.
+- `Parser.traverse()` walks along an abstract syntax tree generated by
+  `Parser.parse()`, and performs function calls to perform top-down, pass-by
+   and bottom-up tree traversal possibilities.
+
+Please take a look at the many examples to get familiar with these functions and
 possibilities.
 
 

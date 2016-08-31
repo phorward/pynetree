@@ -13,7 +13,7 @@ pynetree is a simple, light-weight parsing toolkit for and written in Python.
 
 __author__ = "Jan Max Meyer"
 __copyright__ = "Copyright 2015-2016, Phorward Software Technologies"
-__version__ = "0.2"
+__version__ = "0.3"
 __license__ = "MIT"
 __status__ = "Production"
 
@@ -33,6 +33,28 @@ class MultipleDefinitionError(Exception):
 	def __init__(self, name):
 		super(MultipleDefinitionError, self).__init__(
 			"Multiple definition of: '%s'" % name)
+
+class Node(object):
+	"""
+	This is an AST node.
+	"""
+
+	def __init__(self, symbol, match = None, rule = None, children = None):
+		self.symbol = symbol
+		self.rule = rule
+		self.match = match
+		self.children = children or []
+
+	def __str__(self):
+		s = self.symbol
+
+		if self.rule:
+			s += "[%d]" % self.rule
+
+		if self.match:
+			s += " (%s)" % self.match
+
+		return s
 
 class Parser(object):
 	"""
@@ -186,31 +208,31 @@ class Parser(object):
 				AST traversal function for symbol level in the BNF-grammar.
 				"""
 
-				if symdef[0].startswith("mod_"):
-					sym = buildSymbol(nonterm, symdef[1][0])
+				if symdef.symbol.startswith("mod_"):
+					sym = buildSymbol(nonterm, symdef.children[0])
 					sym = generateModifier(nonterm, sym,
 										   {"kleene":"*",
 											"positive":"+",
-											"optional":"?"}[symdef[0][4:]])
-				elif symdef[0] == "inline":
+											"optional":"?"}[symdef.symbol[4:]])
+				elif symdef.symbol == "inline":
 					sym = uniqueName(nonterm)
 					self.grammar[sym] = []
-					buildNonterminal(sym, symdef[1])
-				elif symdef[0] == "TOKEN":
-					sym = symdef[1][1:-1]
+					buildNonterminal(sym, symdef.children)
+				elif symdef.symbol == "TOKEN":
+					sym = symdef.match[1:-1]
 					self.tokens[sym] = sym
 					self.emits[sym] = None
-				elif symdef[0] == "REGEX":
+				elif symdef.symbol == "REGEX":
 					sym = uniqueName(nonterm.upper())
-					self.token(sym, symdef[1][1:-1])
+					self.token(sym, symdef.match[1:-1])
 					self.emits[sym] = None
-				elif symdef[0] == "CCL":
+				elif symdef.symbol == "CCL":
 					sym = uniqueName(nonterm.upper())
-					self.token(sym, symdef[1])
-				elif symdef[0] == "STRING":
-					sym = symdef[1][1:-1]
+					self.token(sym, symdef.match)
+				elif symdef.symbol == "STRING":
+					sym = symdef.match[1:-1]
 				else:
-					sym = symdef[1]
+					sym = symdef.match
 
 				return sym
 
@@ -225,28 +247,28 @@ class Parser(object):
 
 				for p in prods:
 
-					if p[0] == "GOAL":
+					if p.symbol == "GOAL":
 						self.goal = nonterm
 						continue
 
-					elif p[0] == "EMIT":
+					elif p.symbol == "EMIT":
 						allEmit = True
 						continue
 
-					elif p[0] == "NOEMIT":
+					elif p.symbol == "NOEMIT":
 						allEmit = False
 						continue
 
 					seq = []
 					emit = allEmit
 
-					for s in p[1]:
+					for s in p.children:
 
-						if s[0] == "EMIT":
+						if s.symbol == "EMIT":
 							emit = True
 							continue
 
-						elif s[0] == "NOEMIT":
+						elif s.symbol == "NOEMIT":
 							emit = False
 							continue
 
@@ -267,59 +289,59 @@ class Parser(object):
 
 			# Integrate all non-terminals into the grammar.
 			for d in ast:
-				if d[0] == "nontermdef":
-					sym = d[1][0][1]
+				if d.symbol == "nontermdef":
+					sym = d.children[0].match
 					self.grammar[sym] = []
 
 			# Now build the grammar
 			emitall = False
 			for d in ast:
-				if d[0] == "EMITALL":
+				if d.symbol == "EMITALL":
 					emitall = True
 					continue
-				elif d[0] == "EMITNONE":
+				elif d.symbol == "EMITNONE":
 					emitall = False
 					continue
-				elif d[0] == "termdef":
-					if d[1][0][1]:
-						sym = d[1][0][1][0][1]
+				elif d.symbol == "termdef":
+					if d.children[0].children:
+						sym = d.children[0].children[0].match
 					else:
 						sym = self.AUTOTOKNAME % (len(self.tokens.keys()) + 1)
 
-					kind = d[1][1][0]
+					kind = d.children[1].symbol
 
 					if kind == "STRING":
-						dfn = d[1][1][1][1:-1]
+						dfn = d.children[1].children[0].match[1:-1]
 					elif kind == "REGEX":
-						dfn = re.compile(d[1][1][1][1:-1])
+						dfn = re.compile(d.children[1].match[1:-1])
 					elif kind == "CCL":
-						dfn = re.compile(d[1][1][1])
+						dfn = re.compile(d.children[1].match)
 					else:
-						dfn = d[1][1][1]
+						dfn = d.children[1].match
 
 					if sym in self.tokens.keys():
 						raise MultipleDefinitionError(sym)
 
 					self.tokens[sym] = dfn
 
-					for flag in d[1][2:]:
-						if flag[0] == "EMIT":
+					for flag in d.children[2:]:
+						if flag.symbol == "EMIT":
 							self.emit(sym)
-						elif flag[0] == "IGNORE":
+						elif flag.symbol == "IGNORE":
 							self.ignores.append(sym)
 
 					if emitall:
 						self.emit(sym)
 
 				else:
-					sym = d[1][0][1]
-					buildNonterminal(sym, d[1][1:], emitall)
+					sym = d.children[0].match
+					buildNonterminal(sym, d.children[1:], emitall)
 
 			# First nonterminal becomes goal, if not set by flags
 			if not self.goal:
 				for d in reversed(ast):
-					if d[0] == "nontermdef":
-						self.goal = d[1][0][1]
+					if d.symbol == "nontermdef":
+						self.goal = d.children[0].match
 						break
 
 		if not self.goal:
@@ -532,7 +554,7 @@ class Parser(object):
 								break
 
 							if sym in self.emits.keys():
-								seq.append((sym, s[pos:pos + res]))
+								seq.append(Node(sym, s[pos:pos + res]))
 
 							pos += res
 
@@ -553,8 +575,8 @@ class Parser(object):
 							pos = res.pos
 
 							if sym in self.emits.keys():
-								seq.append((sym, res.res))
-							elif isinstance(res.res, tuple):
+								seq.append(Node(sym, children = res.res))
+							elif isinstance(res.res, Node):
 								seq.append(res.res)
 							elif isinstance(res.res, list):
 								seq += res.res
@@ -566,7 +588,7 @@ class Parser(object):
 
 						# Insert production-based node?
 						if (nterm, count) in self.emits.keys():
-							seq = [((nterm, count), seq)]
+							seq = [Node(nterm, rule = count, children = seq)]
 
 						return (seq, pos)
 
@@ -677,78 +699,106 @@ class Parser(object):
 			return None
 
 		if self.goal in self.emits.keys():
-			return (self.goal, ast.res)
+			return Node(self.goal, children = ast.res)
 
 		return ast.res
 
-	def traverse(self, ast, prefix = "_"):
-		if not ast:
+	def traverse(self, node, prePrefix = "pre_", passPrefix = "pass_", postPrefix = "post_", *args, **kwargs):
+		"""
+		Generic AST traversal function.
+
+		This function allows to walk over the generated abstract syntax tree created by :meth:`pynetree.Parser.parse`
+		and calls functions before, by iterating over and after the node are walked.
+
+		:param node: The tree node to print.
+		:param prePrefix: Prefix for pre-processed functions, named prePrefix + symbol.
+		:param passPrefix: Prefix for functions processed by passing though children, named passPrefix + symbol.
+		:param postPrefix: Prefix for post-processed functions, named postPrefix + symbol.
+		:param args: Arguments passed to these functions as *args.
+		:param kwargs: Keyword arguments passed to these functions as **kwargs.
+		"""
+		if node is None:
 			return
 
-		if isinstance(ast, tuple):
-			if isinstance(ast[1], list) or isinstance(ast[1], tuple):
-				self.traverse(ast[1], prefix = prefix)
+		if isinstance(node, Node):
 
-			# Check for (prefixed) callback function in self
-			nname = "%s%s" % (prefix, ast[0][0] if isinstance(ast[0], tuple) else ast[0])
+			# Pre-processing function
+			fname = "%s%s" % (prePrefix, node.symbol)
+			if fname and fname in dir(self) and callable(getattr(self, fname)):
+				getattr(self, fname)(node, *args, **kwargs)
 
-			if nname and nname in dir(self) and callable(getattr(self, nname)):
-				getattr(self, nname)(ast)
-			else:
-				# Try other ways of traversal.
-				action = self.emits[ast[0]]
+			for cnt, i in enumerate(node.children):
+				self.traverse(i, prePrefix, passPrefix, postPrefix, *args, **kwargs)
 
-				if callable(action):
-					action(ast)
-				elif action:
-					print(nname)
+				# Pass-processing function
+				fname = "%s%s" % (passPrefix, node.symbol)
+				if fname and fname in dir(self) and callable(getattr(self, fname)):
+					getattr(self, fname)(node, _loopIndex = cnt, *args, **kwargs)
 				else:
-					print(action)
+					fname = "%s%s_%d" % (passPrefix, node.symbol, cnt)
+
+					if fname and fname in dir(self) and callable(getattr(self, fname)):
+						getattr(self, fname)(node, *args, **kwargs)
+
+			# Post-processing function
+			fname = "%s%s" % (postPrefix, node.symbol)
+			if fname and fname in dir(self) and callable(getattr(self, fname)):
+				getattr(self, fname)(node, *args, **kwargs)
+
+			# Allow for post-process function in the emit info.
+			elif callable(self.emits[node.symbol]):
+				self.emits[node.symbol](node, *args, **kwargs)
+
+			elif self.emits[node.symbol]:
+				print(self.emits[node.symbol])
+
+		elif isinstance(node, list):
+			for item in node:
+				self.traverse(item, prePrefix, passPrefix, postPrefix, *args, **kwargs)
 
 		else:
-			for i in ast:
-				self.traverse(i, prefix = prefix)
+			raise ValueError()
 
-	def dump(self, ast, level = 0):
-		if ast is None:
+	def dump(self, node, level = 0):
+		if node is None:
 			return
 
-		if isinstance(ast, tuple):
-			node = ast[0][0] if isinstance(ast[0], tuple) else ast[0]
+		if isinstance(node, Node):
+			print("%s%s" % (level * " ", str(node)))
 
-			if isinstance(ast[1], (list, tuple)) or not ast[1]:
-				print("%s%s" % (level * " ", node))
-				self.dump(ast[1], level + 1)
-			else:
-				print("%s%s (%s)" % (level * " ", node, ast[1]))
+			for child in node.children:
+				self.dump(child, level + 1)
+
+		elif isinstance(node, list):
+			for item in node:
+				self.dump(item)
+
 		else:
-			for i in ast:
-				self.dump(i, level + 1 if level > 0 else level)
-
+			raise ValueError()
 
 if __name__ == "__main__":
 
 	class Calculator(Parser):
 		stack = []
 
-		def _INT(self, ast):
-			self.stack.append(float(ast[1]))
+		def post_INT(self, node):
+			self.stack.append(float(node.match))
 
-		def _add(self, ast):
+		def post_add(self, node):
 			self.stack.append(self.stack.pop() + self.stack.pop())
 
-		def _sub(self, ast):
+		def post_sub(self, node):
 			x = self.stack.pop()
 			self.stack.append(self.stack.pop() - x)
 
-		def _mul(self, ast):
+		def post_mul(self, node):
 			self.stack.append(self.stack.pop() * self.stack.pop())
 
-		def _div(self, ast):
+		def post_div(self, node):
 			x = self.stack.pop()
 			self.stack.append(self.stack.pop() / x)
 
-		def _calc(self, ast):
+		def post_calc(self, node):
 			print(self.stack.pop())
 
 	# RIGHT-RECURSIVE
