@@ -42,6 +42,8 @@ class Node(object):
 	def __init__(self, symbol, match = None, rule = None, children = None):
 		self.symbol = symbol
 		self.rule = rule
+		self.key = self.symbol if self.rule is None else (self.symbol, self.rule)
+
 		self.match = match
 		self.children = children or []
 
@@ -746,11 +748,10 @@ class Parser(object):
 				getattr(self, fname)(node, *args, **kwargs)
 
 			# Allow for post-process function in the emit info.
-			elif callable(self.emits[node.symbol]):
-				self.emits[node.symbol](node, *args, **kwargs)
-
-			elif self.emits[node.symbol]:
-				print(self.emits[node.symbol])
+			elif callable(self.emits[node.key]):
+				self.emits[node.key](node, *args, **kwargs)
+			elif self.emits[node.key]:
+				print(self.emits[node.key])
 
 		elif isinstance(node, list):
 			for item in node:
