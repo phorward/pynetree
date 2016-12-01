@@ -4,15 +4,19 @@
 
 from pynetree import Parser
 
-p = Parser("""	$/\\s+/ %ignore;
-				$INT /\\d+/ %emit;
+p = Parser("""	%skip /\\s+/;
+				@INT /\\d+/;
+
 				f: INT | '(' e ')';
-				mul: t "*" f %emit;
-				div: t "/" f %emit;
+				@mul: t '*' f;
+				@div: t '/' f;
+
 				t: mul | div | f;
-				add: e "+" t %emit;
-				sub: e "-" t %emit;
-				e %goal: add | sub | t;""")
+				@add: e '+' t;
+				@sub: e '-' t;
+
+				e$: add | sub | t;
+""")
 
 p.dump(p.parse("123 + 456 * 789"))
 

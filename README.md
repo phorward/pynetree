@@ -1,11 +1,8 @@
 ![Image of a Tree](pine.jpg)
 
 **pynetree**: *A light-weight parsing toolkit written in Python*
-
-Version: 0.3
-
-Release: beta
-
+- Version: 0.4
+- Release: beta
 
 # DESCRIPTION #
 
@@ -23,17 +20,18 @@ on the input `1 + 2 * ( 3 + 4 ) + 5`:
 	from pynetree import Parser
 
 	p = Parser({
-		"factor": ["INT", "( expr )"],
-		"mul": "term * factor",
-		"term": ["mul", "factor"],
-		"add": "expr + term",
-		"expr": ["add", "term"],
+		"factor": ["@INT", "( expr )"],
+		"@mul": "term * factor",
+		"@div": "term / factor",
+		"term": ["mul", "div", "factor"],
+		"@add": "expr + term",
+		"@sub": "expr - term",
+		"expr": ["add", "sub", "term"],
 		"calc$": "expr"
 	})
 
-	p.ignore(r"\s+")
+	p.ignore(r"\s+") #ignore whitespace
 	p.token("INT", r"\d+")
-	p.emit(["INT", "mul", "add"])
 
 	p.dump(p.parse("1 + 2 * (3 + 4) + 5"))
 
@@ -52,7 +50,7 @@ be generated and printed:
 	  INT (5)
 
 
-Grammars may also be expressed in pynetree's self-hosted BNF-styled grammar
+Grammars may also be expressed in pynetrees self-hosted BNF-styled grammar
 definition language. This language allows to configure the entire parser
 behavior, including token and whitespace symbol declaration and information
 from which rules the abstract syntax tree that is build during the parse
@@ -63,15 +61,21 @@ output as shown above, but all is defined within the grammar definition step.
 
 	from pynetree import Parser
 
-	p = Parser("""	$INT /\\d+/ %emit;
-					$/\\s+/ %skip;
-					f: INT | '(' e ')';
-					mul: t '*' f %emit;
-					t: mul | f;
-					add: e '+' t %emit;
-					e: add | t;""")
+	p = Parser("""	%skip /\\s+/;
+					@INT /\\d+/;
 
-	p.dump(p.parse("1 + 2 * (3 + 4) + 5"))
+					f: INT | '(' e ')';
+					@mul: t '*' f;
+					@div: t '/' f;
+
+					t: mul | div | f;
+					@add: e '+' t;
+					@sub: e '-' t;
+
+					e$: add | sub | t;
+	""")
+
+	p.dump(p.parse("123 + 456 * 789"))
 
 
 The pynetree project is currently under heavy development, so that changes in
@@ -172,21 +176,20 @@ could serve as some kind of compiler or interpreter, like here:
 		def __init__(self):
 			super(Calculator, self).__init__(
 				"""
-				$/\\s+/ %ignore;
+				%ignore /\\s+/;
+				@INT    /\\d+/;
 
-				$INT /\\d+/ %emit;
-				f: INT | '(' e ')';
+				f:      INT | '(' e ')';
 
-				mul: t "*" f %emit;
-				div: t "/" f %emit;
+				@mul:   t "*" f;
+				@div:   t "/" f;
+				t:      mul | div | f;
 
-				t: mul | div | f;
-				add: e "+" t %emit;
-				sub: e "-" t %emit;
+				@add:   e "+" t;
+				@sub:   e "-" t;
+				e:      add | sub | t;
 
-				e: add | sub | t;
-
-				calc %goal %emit : e;
+				@calc$: e;
 				""")
 
 		def post_INT(self, node):

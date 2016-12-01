@@ -1,0 +1,32 @@
+v0.4
+----
+Under development!
+
+- Features the new libphorward-style BNF grammar definition language syntax
+  (more about it can be obtained from https://bitbucket.org/codepilot/phorward)
+- Enhanced pynetree.Node class to more utility functions for grabbing
+  child nodes by kind and check for child node existence.
+- Emitted tokens can now also be flagged in a dict-style grammar definition
+  by preceding "@" to a symbol name, as it is the case in the BNF grammar.
+- Added this changelog :)
+
+v0.3
+----
+
+- Abstract Syntax Trees are build upon pynetree.Node objects now
+- Bugfix on rule-emits, now storing a key within the pynetree.Node object for
+  unique access
+- Fixed the internal BNF traversal to new pynetree.Node
+- Improved pynetree.Parser.traverse() function to allow for bottom-up,
+  top-down and pass-by tree traversal.
+- Updated README file to latest changes.
+
+v0.2
+----
+
+Comes with an improved traverse() function.
+
+v0.1
+----
+
+First initial version with all base features.
