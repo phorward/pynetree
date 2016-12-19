@@ -52,10 +52,10 @@ class Node(object):
 	def __str__(self):
 		s = self.emit or self.symbol
 
-		if self.rule:
+		if self.rule is not None:
 			s += "[%d]" % self.rule
 
-		if self.match:
+		if self.match is not None:
 			s += " (%s)" % self.match
 
 		return s
@@ -259,9 +259,9 @@ class Parser(object):
 					if symdef.select("EMIT"):
 						ident = symdef.select("IDENT", 0)
 						if ident is not None:
-							ident = ident.match
-
-						self.emit(sym, ident)
+							self.emit(sym, ident.match)
+						else:
+							self.emit((nonterm, len(self.grammar[nonterm])))
 
 				elif symdef.symbol == "TOKEN":
 					sym = symdef.match[1:-1]
@@ -287,22 +287,9 @@ class Parser(object):
 				"""
 				for p in prods:
 					seq = []
-					emit = False
 
 					for s in p.children:
-
-						if s.symbol == "EMIT":
-							emit = True
-							continue
-
-						elif s.symbol == "NOEMIT":
-							emit = False
-							continue
-
 						seq.append(buildSymbol(nonterm, s))
-
-					if emit:
-						emits.append((nonterm, len(self.grammar[nonterm])))
 
 					self.grammar[nonterm].append(seq)
 
@@ -611,7 +598,7 @@ class Parser(object):
 
 						# Insert production-based node?
 						if (nterm, count) in self.emits.keys():
-							seq = [Node(nterm, self.emits[nterm], rule = count, children = seq)]
+							seq = [Node(nterm, self.emits[(nterm, count)], rule = count, children = seq)]
 
 						return (seq, pos)
 
@@ -740,39 +727,47 @@ class Parser(object):
 		:param args: Arguments passed to these functions as *args.
 		:param kwargs: Keyword arguments passed to these functions as **kwargs.
 		"""
+		def perform(prefix, loop = None, *args, **kwargs):
+			if node.rule is not None:
+				fname = "%s%s_%d" % (prefix, node.symbol, node.rule)
+			else:
+				fname = "%s%s" % (prefix, node.symbol)
+
+			if loop is not None:
+				kwargs["_loopIndex"] = loop
+
+			if fname and fname in dir(self) and callable(getattr(self, fname)):
+				getattr(self, fname)(node, *args, **kwargs)
+				return True
+			elif loop is not None:
+				fname += "_%d" % loop
+
+				if fname and fname in dir(self) and callable(getattr(self, fname)):
+					getattr(self, fname)(node, *args, **kwargs)
+					return True
+
+			return False
+
 		if node is None:
 			return
 
 		if isinstance(node, Node):
-
 			# Pre-processing function
-			fname = "%s%s" % (prePrefix, node.symbol)
-			if fname and fname in dir(self) and callable(getattr(self, fname)):
-				getattr(self, fname)(node, *args, **kwargs)
+			perform(prePrefix, *args, **kwargs)
 
 			for cnt, i in enumerate(node.children):
 				self.traverse(i, prePrefix, passPrefix, postPrefix, *args, **kwargs)
 
 				# Pass-processing function
-				fname = "%s%s" % (passPrefix, node.symbol)
-				if fname and fname in dir(self) and callable(getattr(self, fname)):
-					getattr(self, fname)(node, _loopIndex = cnt, *args, **kwargs)
-				else:
-					fname = "%s%s_%d" % (passPrefix, node.symbol, cnt)
-
-					if fname and fname in dir(self) and callable(getattr(self, fname)):
-						getattr(self, fname)(node, *args, **kwargs)
+				perform(passPrefix, loop=cnt, *args, **kwargs)
 
 			# Post-processing function
-			fname = "%s%s" % (postPrefix, node.symbol)
-			if fname and fname in dir(self) and callable(getattr(self, fname)):
-				getattr(self, fname)(node, *args, **kwargs)
-
-			# Allow for post-process function in the emit info.
-			elif callable(self.emits[node.key]):
-				self.emits[node.key](node, *args, **kwargs)
-			elif self.emits[node.key]:
-				print(self.emits[node.key])
+			if not perform(postPrefix, *args, **kwargs):
+				# Allow for post-process function in the emit info.
+				if callable(self.emits[node.key]):
+					self.emits[node.key](node, *args, **kwargs)
+				elif self.emits[node.key]:
+					print(self.emits[node.key])
 
 		elif isinstance(node, list):
 			for item in node:
