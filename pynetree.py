@@ -728,23 +728,28 @@ class Parser(object):
 		:param kwargs: Keyword arguments passed to these functions as **kwargs.
 		"""
 		def perform(prefix, loop = None, *args, **kwargs):
-			if node.rule is not None:
-				fname = "%s%s_%d" % (prefix, node.symbol, node.rule)
-			else:
-				fname = "%s%s" % (prefix, node.symbol)
-
 			if loop is not None:
 				kwargs["_loopIndex"] = loop
 
-			if fname and fname in dir(self) and callable(getattr(self, fname)):
-				getattr(self, fname)(node, *args, **kwargs)
-				return True
-			elif loop is not None:
-				fname += "_%d" % loop
+			for x in range(0, 2):
+				if x == 0:
+					fname = "%s%s" % (prefix, node.symbol)
+				else:
+					if node.rule is None:
+						break
+
+					fname = "%s%s_%d" % (prefix, node.symbol, node.rule)
 
 				if fname and fname in dir(self) and callable(getattr(self, fname)):
 					getattr(self, fname)(node, *args, **kwargs)
 					return True
+
+				elif loop is not None:
+					fname += "_%d" % loop
+
+					if fname and fname in dir(self) and callable(getattr(self, fname)):
+						getattr(self, fname)(node, *args, **kwargs)
+						return True
 
 			return False
 
