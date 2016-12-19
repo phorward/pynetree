@@ -15,7 +15,7 @@ __author__ = "Jan Max Meyer"
 __copyright__ = "Copyright 2015-2016, Phorward Software Technologies"
 __version__ = "0.4"
 __license__ = "MIT"
-__status__ = "Production"
+__status__ = "Beta"
 
 import re
 
@@ -205,7 +205,7 @@ class Parser(object):
 
 				"alternation": ["alternation | production", "production"],
 
-				"nontermflag": ["$", "!"],
+				"nontermflag": ["GOAL"], #fixme sticky
 				"nontermflags": ["nontermflags nontermflag", "nontermflag", ""],
 				"nontermdef": ["opt_emit IDENT nontermflags : alternation ;" ],
 
@@ -225,9 +225,6 @@ class Parser(object):
 
 			bnfparser.token("GOAL", "$", static=True)
 			bnfparser.token("EMIT", "@", static=True)
-			bnfparser.token("NOEMIT", "noemit", static=True)
-			bnfparser.token("EMITALL", "emitall", static=True)
-			bnfparser.token("EMITNONE", "emitnone", static=True)
 			bnfparser.token("IGNORE", r"%(ignore|skip)")
 
 			bnfparser.emit(["IDENT", "STRING", "TOKEN", "REGEX", "CCL",
@@ -733,12 +730,12 @@ class Parser(object):
 
 			for x in range(0, 2):
 				if x == 0:
-					fname = "%s%s" % (prefix, node.symbol)
+					fname = "%s%s" % (prefix, node.emit or node.symbol)
 				else:
 					if node.rule is None:
 						break
 
-					fname = "%s%s_%d" % (prefix, node.symbol, node.rule)
+					fname = "%s%s_%d" % (prefix, node.emit or node.symbol, node.rule)
 
 				if fname and fname in dir(self) and callable(getattr(self, fname)):
 					getattr(self, fname)(node, *args, **kwargs)
