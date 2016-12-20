@@ -60,10 +60,10 @@ class Node(object):
 
 		return s
 
-	def __eq__(self, symbol):
+	def check(self, symbol):
 		return self.symbol == symbol
 
-	def __contains__(self, symbol):
+	def contains(self, symbol):
 		return bool(self.select(symbol, 0))
 
 	def select(self, symbol, idx = -1):
@@ -83,7 +83,7 @@ class Node(object):
 				if idx == 0:
 					return child
 
-				idx -= 0
+				idx -= 1
 
 		return None
 
@@ -302,18 +302,18 @@ class Parser(object):
 			nonterm = None
 
 			for d in ast.children:
-				if d == "termdef":
+				if d.check("termdef"):
 					term = d.select("IDENT", 0)
 					if term:
 						term = term.match
 					else:
 						term = self.AUTOTOKNAME % (len(self.tokens.keys()) + 1)
 
-					if "STRING" in d:
+					if d.contains("STRING"):
 						dfn = d.select("STRING", 0).match[1:-1]
-					elif "REGEX" in d:
+					elif d.contains("REGEX"):
 						dfn = re.compile(d.select("REGEX", 0).match[1:-1])
-					elif "CCL" in d:
+					elif d.contains("CCL"):
 						dfn = re.compile(d.select("CCL", 0).match)
 					else:
 						dfn = d.select("IDENT", 1).match
