@@ -238,7 +238,7 @@ way is always appreciated.
 
 # LICENSING #
 
-Copyright (C) 2015, 2016 by Phorward Software Technologies, Jan Max Meyer.
+Copyright (C) 2015-2017 by Phorward Software Technologies, Jan Max Meyer.
 
 You may use, modify and distribute this software under the terms and conditions
 of the MIT license. The full license terms are provided in the LICENSE file.

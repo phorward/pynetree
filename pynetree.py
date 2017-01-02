@@ -2,7 +2,7 @@
 #-*- coding: utf-8 -*-
 # >>>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # pynetree - A light-weight parsing toolkit written in Python
-# Copyright (C) 2015, 2016 by Phorward Software Technologies, Jan Max Meyer
+# Copyright (C) 2015-2017 by Phorward Software Technologies, Jan Max Meyer
 # www.phorward.info ++ jmm<at>phorward<dot>de
 # All rights reserved. See LICENSE for more information.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<<<
@@ -12,7 +12,7 @@ pynetree is a simple, light-weight parsing toolkit for and written in Python.
 """
 
 __author__ = "Jan Max Meyer"
-__copyright__ = "Copyright 2015-2016, Phorward Software Technologies"
+__copyright__ = "Copyright 2015-2017, Phorward Software Technologies"
 __version__ = "0.4"
 __license__ = "MIT"
 __status__ = "Beta"
@@ -33,6 +33,19 @@ class MultipleDefinitionError(Exception):
 	def __init__(self, name):
 		super(MultipleDefinitionError, self).__init__(
 			"Multiple definition of: '%s'" % name)
+
+class ParseError(Exception):
+	def __init__(self, input, offset):
+		row = input.count("\n", 0, offset) + 1
+		col = input.rfind("\n", 0, offset)
+		col = offset if col < 0 else offset - col
+
+		super(ParseError, self).__init__(
+			"Parse Error at line %d, column %d" % (row, col))
+
+		self.offset = offset
+		self.line = row
+		self.column = col
 
 class Node(object):
 	"""
@@ -438,24 +451,6 @@ class Parser(object):
 
 		self.emits[name] = emit
 
-	def error(self, s, pos):
-		"""
-		Print a parse error, that oocurs on input ``s`` at offset ``pos``.
-		This function can be overridden for specific operations.
-
-		:param s: The entire input string.
-		:type s: str
-
-		:param pos: The offset where the syntax error occurs.
-		:param pos: int | long
-		"""
-		line = s.count("\n", 0, pos) + 1
-
-		col = s.rfind("\n", 0, pos)
-		col = pos if col < 0 else pos - col
-
-		print("line %d, col %d: Parse error @ >%s<" % (line, col, s[pos:]))
-
 	def parse(self, s):
 		"""
 		Parse ``s`` with the currently defined grammar.
@@ -701,7 +696,7 @@ class Parser(object):
 					last = off
 
 			if last > 0:
-				self.error(s, last)
+				raise ParseError(s, last)
 
 			return None
 

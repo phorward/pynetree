@@ -1,1 +1,1 @@
-from pynetree import Parser
+from pynetree import Parser, ParseError

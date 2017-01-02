@@ -2,6 +2,7 @@ v0.4
 ----
 Under development!
 
+- Introduced ParseError exception instead of error() function.
 - Features the new libphorward-style BNF grammar definition language syntax
   (more about it can be obtained from https://bitbucket.org/codepilot/phorward)
 - Enhanced pynetree.Node class to more utility functions for grabbing
