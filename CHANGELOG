@@ -1,6 +1,5 @@
 v0.4
 ----
-Under development!
 
 - Introduced ParseError exception instead of error() function.
 - Features the new libphorward-style BNF grammar definition language syntax
