@@ -1,6 +1,6 @@
 ![Image of a Tree](pine.jpg)
 
-**pynetree**: *A light-weight parsing toolkit written in Python*
+**pynetree**: *A light-weight parsing toolkit written in pure Python*
 - Version: 0.4
 - Release: beta
 
@@ -95,7 +95,7 @@ The pynetree parser development toolkit so far provides
 - Grammars can be expressed as dict objects or by a BNF-grammar.
 - Support functions for generating and traversing abstract syntax trees (AST).
 - Lexical analysis can be performed via regular expressions (re), string or
-  by Python call-ables.
+  by Python callables.
 
 Please check out http://pynetree.org to get help and the newest updates on
 the pynetree project.
@@ -103,7 +103,8 @@ the pynetree project.
 
 ## REQUIREMENTS ##
 
-pynetree is written in pure Python. It runs natively with Python 2 and 3.
+pynetree is written in pure Python. It runs natively with Python 2.x and 3.x.
+
 The only import done so far is the build-in `re` module for regular expression
 support. Nothing else is required!
 

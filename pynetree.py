@@ -35,13 +35,13 @@ class MultipleDefinitionError(Exception):
 			"Multiple definition of: '%s'" % name)
 
 class ParseError(Exception):
-	def __init__(self, input, offset):
-		row = input.count("\n", 0, offset) + 1
-		col = input.rfind("\n", 0, offset)
+	def __init__(self, s, offset):
+		row = s.count("\n", 0, offset) + 1
+		col = s.rfind("\n", 0, offset)
 		col = offset if col < 0 else offset - col
 
 		super(ParseError, self).__init__(
-			"Parse Error at line %d, column %d" % (row, col))
+			"Parse error at line %d, column %d: >%s<" % (row, col, s[offset:]))
 
 		self.offset = offset
 		self.line = row

@@ -1,54 +1,69 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-# The famous XPL programming language example.
-# This little toy C-style language was a demonstraton in the
-# UniCC Parser Generator and has been ported to pynetree here.
+"""
+This is a pynetree grammar definition for a tiny programming language example
+called "XPL" (eXample programming language).
+
+XPL defines:
+
+- a typeless language
+- arithmetic and conditional expressions
+- support of integer, floating point and string values
+- simple control structures (conditionals, iterations)
+- variable assignments
+- nested calls to build-in functions with variable arguments
+
+It can also be perfectly used as an implementation base for any other language.
+
+XPL is implemented in the course of the UniCC Parser Generator's user's manual.
+
+More about XPL can be found here:
+http://www.phorward-software.com/products/unicc-lalr1-parser-generator/xpl
+"""
 
 from pynetree import Parser
 
 p = Parser(
 """
-$				/\\s+/													%skip;
-$REAL			/\\d+\\.\\d*|\\d*\\.\\d+/								%emit;
-$INTEGER		/\\d+/													%emit;
-$STRING			/"[^"]*"/												%emit;
-$IDENT			/\\w+/													%emit;
+%skip			/\\s+/ ;
 
-program 																%goal
-				:	statement* ;
+@REAL			/\\d+\\.\\d*|\\d*\\.\\d+/ ;
+@INTEGER		/\\d+/ ;
+@STRING			/"[^"]*"/ ;
+@IDENT			/\\w+/ ;
 
-statement		:	"if" '(' expression ')' statement
-						('else' statement)?								%emit
-				| 	"while" '(' expression ')' statement				%emit
+program$ 		:	statement* ;
+
+statement		:	@("if" '(' expression ')' statement ('else' statement)?)
+				| 	@("while" '(' expression ')' statement)
 				| 	'{' statement* '}'
 				| 	expression ';'
 				|	';'
 				;
 
-expression		:	expression "==" arith								%emit
-        		|	expression "!=" arith								%emit
-        		|	expression "<" arith								%emit
-        		|	expression ">" arith								%emit
-				|	expression "<=" arith								%emit
-				|	expression ">=" arith								%emit
+expression		:	@(expression "==" arith)
+        		|	@(expression "!=" arith)
+        		|	@(expression "<" arith)
+        		|	@(expression ">" arith)
+				|	@(expression "<=" arith)
+				|	@(expression ">=" arith)
 				|	assign
 				|	arith
 				;
 
-assign			:	IDENT "=" expression								%emit
-				;
+@assign			:	IDENT "=" expression ;
 
-arith			:	arith "+" term										%emit
-				|	arith "-" term										%emit
+arith			:	@(arith "+" term)
+				|	@(arith "-" term)
 				|	term
 				;
 
-term			:	term "*" factor										%emit
-				|	term "/" factor										%emit
+term			:	@(term "*" factor)
+				|	@(term "/" factor)
 				|	factor
 				;
 
-factor			:	"-" atom											%emit
+factor			:	@("-" atom)
 				|	atom
 				;
 
@@ -60,13 +75,15 @@ atom			:	'(' expression ')'
 				|	STRING
 				;
 
-function_call	:	IDENT '(' parameter_list? ')'						%emit
+@function_call	:	IDENT '(' parameter_list? ')'
 				;
 
 parameter_list	:	parameter_list ',' expression
 				|	expression
 				;
 """)
+
+# "99-Bottles-of-Beer" implemented in XPL:
 
 p.dump(p.parse("""
 if( ( bottles = prompt( "Enter number of bottles [default=99]" ) ) == "" )
