@@ -286,6 +286,15 @@ class Parser(object):
 					self.token(sym, symdef.match)
 				elif symdef.symbol == "STRING":
 					sym = symdef.match[1:-1]
+
+					# It a token with same name was previously defined,
+					# generate a temporary nonterminal.
+					if sym in self.emits.keys():
+						rsym = uniqueName(nonterm.upper())
+						self.grammar[rsym] = [sym]
+
+						sym = rsym
+
 				else:
 					sym = symdef.match
 
