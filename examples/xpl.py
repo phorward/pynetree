@@ -18,7 +18,7 @@ It can also be perfectly used as an implementation base for any other language.
 XPL is implemented in the course of the UniCC Parser Generator's user's manual.
 
 More about XPL can be found here:
-http://www.phorward-software.com/products/unicc-lalr1-parser-generator/xpl
+http://www.phorward-software.com/software/unicc-lalr1-parser-generator/xpl
 """
 
 from pynetree import Parser

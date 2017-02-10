@@ -1,86 +1,67 @@
 ![Image of a Tree](pine.jpg)
 
 **pynetree**: *A light-weight parsing toolkit written in pure Python*
-- Version: 0.4
-- Release: beta
 
 # DESCRIPTION #
 
-pynetree is a simple, light-weight parsing toolkit for Python.
+**pynetree** is a simple, light-weight parsing toolkit for Python.
 
-The toolkit has been developed in the course of implementing a top-down parser
-supporting left-recursive grammars. Therefore, pynetree is a parser that
-implements a modified version of the packrat parsing algorithm, but with the
-approach to provide true BNF-styled grammars, as known from other parser
-development tools and frameworks.
+The toolkit is primarily a library that provides an interface for defining,
+running and processing parsers through a consistent and easy-to-use interface.
 
-The following code example already defines a simple grammar and runs a parser
-on the input `1 + 2 * ( 3 + 4 ) + 5`:
+The result of a parser run is an abstract syntax tree that is constructed during
+the parse and can be used for further traversal or analyzation.
 
+The following example program defines a simple expressional language, runs a
+parser on it and prints the generated abstract syntax tree.
+	
 	from pynetree import Parser
-
-	p = Parser({
-		"factor": ["@INT", "( expr )"],
-		"@mul": "term * factor",
-		"@div": "term / factor",
-		"term": ["mul", "div", "factor"],
-		"@add": "expr + term",
-		"@sub": "expr - term",
-		"expr": ["add", "sub", "term"],
-		"calc$": "expr"
-	})
-
-	p.ignore(r"\s+") #ignore whitespace
-	p.token("INT", r"\d+")
-
-	p.dump(p.parse("1 + 2 * (3 + 4) + 5"))
-
+	
+	p = Parser("""
+		%skip /\s+/;
+		@int /\d+/;
+	
+		factor: int | '(' expr ')';
+	
+		@mul: term '*' factor;
+		term: mul | factor;
+	
+		@add: expr '+' term;
+		expr$: add | term;
+	""")
+	
+	p.dump(p.parse("1 + 2 * ( 3 + 4 ) * 5"))
 
 When this program is ran from a console, a proper abstract syntax tree will
-be generated and printed:
+be generated and printed, which shows the hierarchical structure of the parsed
+expression.
 
 	add
-	  add
-		INT (1)
-		mul
-		  INT (2)
-		  add
-			INT (3)
-			INT (4)
-	  INT (5)
+	 int (1)
+	 div
+	  mul
+	   int (2)
+	   add
+	    int (3)
+	    int (4)
+	  int (5)
 
+Grammars and parsers can also be rapidly prototyped using pynetree's build-in
+command-line utility. The next command-line call yields in exactly the same
+abstract syntax trees, although some symbol names where shortened and both
+grammar and input are expressed in a more compact way.
 
-Grammars may also be expressed in pynetrees self-hosted BNF-styled grammar
-definition language. This language allows to configure the entire parser
-behavior, including token and whitespace symbol declaration and information
-from which rules the abstract syntax tree that is build during the parse
-process is constructed.
-
-The following example code below produces exactly the same parser with the same
-output as shown above, but all is defined within the grammar definition step.
-
-	from pynetree import Parser
-
-	p = Parser("""	%skip /\\s+/;
-					@INT /\\d+/;
-
-					f: INT | '(' e ')';
-					@mul: t '*' f;
-					@div: t '/' f;
-
-					t: mul | div | f;
-					@add: e '+' t;
-					@sub: e '-' t;
-
-					e$: add | sub | t;
-	""")
-
-	p.dump(p.parse("123 + 456 * 789"))
-
+	$ ./pynetree.py "@int /[0-9]+/; f: int | '(' e ')'; t: @mul( t '*' f ) | f; e: @add( e '+' t ) | t;" 
 
 The pynetree project is currently under heavy development, so that changes in
 API, function names, syntax or semantics may occur and need existing projects
 to be ported.
+
+It has been developed in the course of implementing a top-down parser supporting
+left-recursive grammars. Therefore, pynetree is a parser that implements a
+modified version of the packrat parsing algorithm, but with the approach to
+provide true BNF-styled grammars, as known from other parser development tools
+and frameworks.
 
 Have fun!
 
@@ -108,17 +89,42 @@ pynetree is written in pure Python. It runs natively with Python 2.x and 3.x.
 The only import done so far is the build-in `re` module for regular expression
 support. Nothing else is required!
 
-
 # GETTING STARTED #
 
 pynetree is not a parser generator in classic terms like yacc or bison. It
 can be seen as a library to directly express and parse the desired grammar
 within Python code.
 
-To do this, it simply is required to create an object of the class
-`pynetree.Parser`. The Parser class requires a BNF-grammar to describe the
-language that shall be parsed as parameter. This grammar can be expressed
-in two different ways:
+## INVOCATION VIA COMMAND-LINE ##
+
+Nevertheless, a command-line interface is provided for rapidly grammar
+prototyping and testing.
+
+	usage: pynetree.py [-h] [-d] [-v] [-V] grammar [input [input ...]]
+	
+	pynetree - a light-weight parsing toolkit written in Python.
+	
+	positional arguments:
+	  grammar        Grammar to create a parser from.
+	  input          Input to be processed by the parser.
+	
+	optional arguments:
+	  -h, --help     show this help message and exit
+	  -d, --debug    Verbose, and print debug output
+	  -v, --verbose  Print processing information during run
+	  -V, --version  show program's version number and exit
+	
+	'grammar' and 'input' can be either supplied as strings or files.
+
+
+
+## USING FROM PYTHON SOURCE ##
+
+For using pynetee in a Python script, it simply is required to create an object
+of the class `pynetree.Parser`.
+
+The Parser class requires a BNF-grammar to describe the language that shall be
+parsed as parameter. This grammar can be expressed in two different ways:
 
 1. 	As dict specifying the non-terminals as keys and their left-hand sides
 	as the values (where the left-hand sides can be provided as list of
@@ -177,8 +183,8 @@ could serve as some kind of compiler or interpreter, like here:
 		def __init__(self):
 			super(Calculator, self).__init__(
 				"""
-				%ignore /\\s+/;
-				@INT    /\\d+/;
+				%ignore /\s+/;
+				@INT    /\d+/;
 
 				f:      INT | '(' e ')';
 

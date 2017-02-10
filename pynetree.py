@@ -13,7 +13,7 @@ pynetree is a simple, light-weight parsing toolkit for and written in Python.
 
 __author__ = "Jan Max Meyer"
 __copyright__ = "Copyright 2015-2017, Phorward Software Technologies"
-__version__ = "0.4"
+__version__ = "0.5"
 __license__ = "MIT"
 __status__ = "Beta"
 
@@ -38,7 +38,7 @@ class ParseError(Exception):
 	def __init__(self, s, offset):
 		row = s.count("\n", 0, offset) + 1
 		col = s.rfind("\n", 0, offset)
-		col = offset if col < 0 else offset - col
+		col = (offset + 1) if col < 1 else offset - col
 
 		super(ParseError, self).__init__(
 			"Parse error at line %d, column %d: >%s<" % (row, col, s[offset:]))
@@ -68,7 +68,7 @@ class Node(object):
 		if self.rule is not None:
 			s += "[%d]" % self.rule
 
-		if self.match is not None:
+		if not self.children and self.match is not None:
 			s += " (%s)" % self.match
 
 		return s
@@ -230,6 +230,9 @@ class Parser(object):
 				"grammar$": "definitions"})
 
 			bnfparser.ignore(r"\s+")
+			bnfparser.ignore(r"//[^\n]*\n")
+			bnfparser.ignore(r"/\*([^*]|\*[^/])*\*/")
+
 			bnfparser.token("IDENT", r"\w+")
 			bnfparser.token("CCL", r"\[[^\]]*\]")
 			bnfparser.token("STRING", r"'[^']*'")
@@ -286,14 +289,6 @@ class Parser(object):
 					self.token(sym, symdef.match)
 				elif symdef.symbol == "STRING":
 					sym = symdef.match[1:-1]
-
-					# It a token with same name was previously defined,
-					# generate a temporary nonterminal.
-					if sym in self.emits.keys():
-						rsym = uniqueName(nonterm.upper())
-						self.grammar[rsym] = [sym]
-
-						sym = rsym
 
 				else:
 					sym = symdef.match
@@ -565,7 +560,8 @@ class Parser(object):
 								break
 
 							if sym in self.emits.keys():
-								seq.append(Node(sym, self.emits[sym], s[pos:pos + res]))
+								seq.append(Node(sym, self.emits[sym],
+								                s[pos:pos + res]))
 
 							pos += res
 
@@ -583,14 +579,16 @@ class Parser(object):
 							if res.res is None:
 								break
 
-							pos = res.pos
-
 							if sym in self.emits.keys():
-								seq.append(Node(sym, self.emits[sym], children = res.res))
+								seq.append(Node(sym, self.emits[sym],
+								                s[pos:pos + res.pos],
+								                children = res.res))
 							elif isinstance(res.res, Node):
 								seq.append(res.res)
 							elif isinstance(res.res, list):
 								seq += res.res
+
+							pos = res.pos
 
 						sym = None
 
@@ -704,10 +702,7 @@ class Parser(object):
 				if off > last:
 					last = off
 
-			if last > 0:
-				raise ParseError(s, last)
-
-			return None
+			raise ParseError(s, last)
 
 		if self.goal in self.emits.keys():
 			return Node(self.goal, self.emits[self.goal], children = ast.res)
@@ -799,73 +794,91 @@ class Parser(object):
 		else:
 			raise ValueError()
 
+
 if __name__ == "__main__":
+	import argparse, sys
 
-	class Calculator(Parser):
-		stack = []
+	ap = argparse.ArgumentParser(
+		description="pynetree - a light-weight parsing toolkit written in Python.",
+		epilog="'grammar' and 'input' can be either supplied as strings or files.")
 
-		def post_INT(self, node):
-			self.stack.append(float(node.match))
+	ap.add_argument("grammar", type=str, help="Grammar to create a parser from.")
+	ap.add_argument("input", type=str, nargs="*", help="Input to be processed by the parser.")
 
-		def post_add(self, node):
-			self.stack.append(self.stack.pop() + self.stack.pop())
+	ap.add_argument("-d", "--debug", help="Verbose, and print debug output", action="store_true")
+	ap.add_argument("-v", "--verbose", help="Print processing information during run", action="store_true")
+	ap.add_argument("-V", "--version", action="version", version="pynetree %s" % __version__)
 
-		def post_sub(self, node):
-			x = self.stack.pop()
-			self.stack.append(self.stack.pop() - x)
+	args = ap.parse_args()
+	verbose = args.verbose or args.debug
 
-		def post_mul(self, node):
-			self.stack.append(self.stack.pop() * self.stack.pop())
+	# Try to read grammar from a file.
+	try:
+		f = open(args.grammar, "rb")
+		gfile = args.grammar
 
-		def post_div(self, node):
-			x = self.stack.pop()
-			self.stack.append(self.stack.pop() / x)
+		if verbose:
+			print("Reading grammar from '%s'" % gfile)
 
-		def post_calc(self, node):
-			print(self.stack.pop())
+		grammar = f.read()
+		f.close()
 
-	# RIGHT-RECURSIVE
-	'''
-	g = {
-		"factor": ["INT", "( expr )"],
-		"term": ["factor * term", "factor / term", "factor"],
-		"expr": ["term + expr", "term - expr", "term"],
-		"calc$": "expr"
-	}
-	'''
+	except IOError:
+		gfile = "grammar"
+		grammar = args.grammar
 
-	# DIRECT LEFT-RECURSIVE
-	'''
-	g = {
-		"factor": ["INT", "( expr )"],
-		"term": ["term * factor", "factor"],
-		"expr": ["expr + term", "expr - term", "term"],
-		"calc$": "expr"
-	}
-	'''
+	try:
+		p = Parser(grammar, args.debug)
 
-	# INDIRECT LEFT-RECURSIVE!!
-	g = {
-		"factor": ["@INT", "( expr )"],
-		"@mul": "term * factor",
-		"@div": "term / factor",
-		"term": ["mul", "div", "factor"],
-		"@add": "expr + term",
-		"@sub": "expr - term",
-		"expr": ["add", "sub", "term"],
-		"@calc$": "expr"
-	}
+	except ParseError as e:
+		print(("%s: " % gfile) + str(e))
+		sys.exit(1)
 
-	calc = Calculator(g)
-	calc.token("INT", r"\d+")
-	calc.ignore(r"\s+")
+	cnt = 0
+	hasInput = bool(args.input)
 
-	# Parse into a parse tree
-	ast = calc.parse("1 + 2 * ( 3 + 4 ) * 5 - 6 / 7")
+	while True:
+		ifile = "input.%d" % cnt
+		cnt += 1
 
-	print("--- abstract syntax tree ---")
-	calc.dump(ast)
+		if hasInput:
+			if not args.input:
+				break
 
-	# Traverse (interpret) the parse tree
-	print("--- traversal ---")
-	calc.traverse(ast)
+			input = args.input.pop(0)
+
+			# Try to read input from a file.
+			try:
+				f = open(input, "rb")
+				ifile = input
+
+				input = f.read()
+				f.close()
+
+			except IOError:
+				pass
+
+		else:
+			if verbose:
+				sys.stdout.write("> ")
+
+			try:
+				input = raw_input()
+			except NameError:
+				input = input()
+
+			if not input:
+				break
+
+		try:
+			ast = p.parse(input)
+
+			if verbose:
+				print("%s: Parsing successful" % ifile)
+
+		except ParseError as e:
+			print(("%s: " % ifile) + str(e))
+			ast = None
+
+		if ast:
+			p.dump(ast)
