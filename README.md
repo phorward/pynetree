@@ -1,5 +1,4 @@
 ![Image of a Tree](pine.jpg)
-
 **pynetree**: *A light-weight parsing toolkit written in pure Python*
 
 # DESCRIPTION #
