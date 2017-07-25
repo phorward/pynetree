@@ -11,41 +11,45 @@ Parsing is the process of transferring input matching a particular grammar, like
 The following Python example using pynetree defines a simple two-function calculator as an expression language, runs a parser on it, and dumps out the generated abstract syntax tree.
 	
 ```python
-	import pynetree
-	
-	p = pynetree.Parser("""
-		%skip /\s+/;
-		@int /\d+/;
-	
-		factor: int | '(' expr ')';
-	
-		@mul: term '*' factor;
-		term: mul | factor;
-	
-		@add: expr '+' term;
-		expr$: add | term;
-	""")
-	
-	p.parse("1 + 2 * ( 3 + 4 ) * 5").dump()
+import pynetree
+
+p = pynetree.Parser("""
+	%skip /\s+/;
+	@int /\d+/;
+
+	factor: int | '(' expr ')';
+
+	@mul: term '*' factor;
+	term: mul | factor;
+
+	@add: expr '+' term;
+	expr$: add | term;
+""")
+
+p.parse("1 + 2 * ( 3 + 4 ) * 5").dump()
 ```
 
 When this program is run from a console, a proper abstract syntax tree will
 be generated and printed, which shows the hierarchical structure of the parsed
 expression.
 
-	add
-	 int (1)
-	 div
-	  mul
-	   int (2)
-	   add
-	    int (3)
-	    int (4)
-	  int (5)
+```
+add
+ int (1)
+ div
+  mul
+   int (2)
+   add
+    int (3)
+    int (4)
+  int (5)
+```
 
 pynetree also provides a handy command-line tool to rapidly prototype grammars. The next command just generates the same parser as the example program from above.
 
-	$ ./pynetree.py "@int /[0-9]+/; f: int | '(' e ')'; t: @mul( t '*' f ) | f; e: @add( e '+' t ) | t;" 
+```
+$ ./pynetree.py "@int /[0-9]+/; f: int | '(' e ')'; t: @mul( t '*' f ) | f; e: @add( e '+' t ) | t;" 
+```
 
 # Requirements
 
@@ -80,22 +84,23 @@ within Python code.
 Nevertheless, a command-line interface is provided for rapidly grammar
 prototyping and testing.
 
-	usage: pynetree.py [-h] [-d] [-v] [-V] grammar [input [input ...]]
-	
-	pynetree - a light-weight parsing toolkit written in Python.
-	
-	positional arguments:
-	  grammar        Grammar to create a parser from.
-	  input          Input to be processed by the parser.
-	
-	optional arguments:
-	  -h, --help     show this help message and exit
-	  -d, --debug    Verbose, and print debug output
-	  -v, --verbose  Print processing information during run
-	  -V, --version  show program's version number and exit
-	
-	'grammar' and 'input' can be either supplied as strings or files.
+```
+usage: pynetree.py [-h] [-d] [-v] [-V] grammar [input [input ...]]
 
+pynetree - a light-weight parsing toolkit written in Python.
+
+positional arguments:
+  grammar        Grammar to create a parser from.
+  input          Input to be processed by the parser.
+
+optional arguments:
+  -h, --help     show this help message and exit
+  -d, --debug    Verbose, and print debug output
+  -v, --verbose  Print processing information during run
+  -V, --version  show program's version number and exit
+
+'grammar' and 'input' can be either supplied as strings or files.
+```
 
 ## Using it as a library
 
@@ -126,52 +131,52 @@ To walk on such an AST, the function `pynetree.Node.dump()` can be used to print
 When higher AST traversal features are required for a pynetree parser, it is recommended to sub-class `pynetree.Parser` into a more specific class, serving as some kind of compiler or interpreter, like this example:
 
 ```python
-	import pynetree
+import pynetree
 
-	class Calculator(pynetree.Parser):
-		stack = []
+class Calculator(pynetree.Parser):
+	stack = []
 
-		def __init__(self):
-			super(Calculator, self).__init__(
-				"""
-				%ignore /\s+/;
-				@INT    /\d+/;
+	def __init__(self):
+		super(Calculator, self).__init__(
+			"""
+			%ignore /\s+/;
+			@INT    /\d+/;
 
-				f:      INT | '(' e ')';
+			f:      INT | '(' e ')';
 
-				@mul:   t "*" f;
-				@div:   t "/" f;
-				t:      mul | div | f;
+			@mul:   t "*" f;
+			@div:   t "/" f;
+			t:      mul | div | f;
 
-				@add:   e "+" t;
-				@sub:   e "-" t;
-				e:      add | sub | t;
+			@add:   e "+" t;
+			@sub:   e "-" t;
+			e:      add | sub | t;
 
-				@calc$: e;
-				""")
+			@calc$: e;
+			""")
 
-		def post_INT(self, node):
-			self.stack.append(float(node.match))
+	def post_INT(self, node):
+		self.stack.append(float(node.match))
 
-		def post_add(self, node):
-			self.stack.append(self.stack.pop() + self.stack.pop())
+	def post_add(self, node):
+		self.stack.append(self.stack.pop() + self.stack.pop())
 
-		def post_sub(self, node):
-			x = self.stack.pop()
-			self.stack.append(self.stack.pop() - x)
+	def post_sub(self, node):
+		x = self.stack.pop()
+		self.stack.append(self.stack.pop() - x)
 
-		def post_mul(self, node):
-			self.stack.append(self.stack.pop() * self.stack.pop())
+	def post_mul(self, node):
+		self.stack.append(self.stack.pop() * self.stack.pop())
 
-		def post_div(self, node):
-			x = self.stack.pop()
-			self.stack.append(self.stack.pop() / x)
+	def post_div(self, node):
+		x = self.stack.pop()
+		self.stack.append(self.stack.pop() / x)
 
-		def post_calc(self, node):
-			print(self.stack.pop())
+	def post_calc(self, node):
+		print(self.stack.pop())
 
-	c = Calculator()
-	c.traverse(c.parse("1337 - 42 + 23"))
+c = Calculator()
+c.traverse(c.parse("1337 - 42 + 23"))
 ```
 
 Please do also take a look at the many examples provided with pynetree to get familiar with these functions and possibilities.
