@@ -65,7 +65,7 @@ calc.ignore(r"\s+")
 ast = calc.parse("1 + 2 * ( 3 + 4 ) * 5 - 6 / 7")
 
 print("--- abstract syntax tree ---")
-calc.dump(ast)
+ast.dump()
 
 # Traverse (interpret) the parse tree
 print("--- traversal ---")

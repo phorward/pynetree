@@ -1,21 +1,14 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-# >>>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# pynetree - A light-weight parsing toolkit written in Python
-# Copyright (C) 2015-2017 by Phorward Software Technologies, Jan Max Meyer
-# www.phorward.info ++ jmm<at>phorward<dot>de
-# All rights reserved. See LICENSE for more information.
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<<<
-
 """
-pynetree is a simple, light-weight parsing toolkit for and written in Python.
+pynetree: A light-weight parsing toolkit written in pure Python.
 """
 
-__author__ = "Jan Max Meyer"
-__copyright__ = "Copyright 2015-2017, Phorward Software Technologies"
 __version__ = "0.5"
 __license__ = "MIT"
 __status__ = "Beta"
+__author__ = "Jan Max Meyer"
+__copyright__ = "Copyright 2015-2017 by Jan Max Meyer, Phorward Software Technologies"
 
 import re
 
@@ -52,7 +45,7 @@ class Node(object):
 	This is an AST node.
 	"""
 
-	def __init__(self, symbol, emit = None, match = None, rule = None, children = None):
+	def __init__(self, symbol = None, emit = None, match = None, rule = None, children = None):
 		self.symbol = symbol
 		self.emit = emit
 		self.rule = rule
@@ -63,7 +56,7 @@ class Node(object):
 		self.children = children or []
 
 	def __str__(self):
-		s = self.emit or self.symbol
+		s = self.emit or self.symbol or ""
 
 		if self.rule is not None:
 			s += "[%d]" % self.rule
@@ -100,6 +93,14 @@ class Node(object):
 
 		return None
 
+	def dump(self, level=0):
+		if self.symbol or self.emit:
+			print("%s%s" % (level * " ", str(self)))
+			level += 1
+
+		for child in self.children:
+			child.dump(level)
+
 class Parser(object):
 	"""
 	The main parser class that implements a pynetree parser.
@@ -108,7 +109,7 @@ class Parser(object):
 	parsing input, dumping and traversing the resulting parse
 	tree or abstract syntax tree.
 	"""
-	AUTOTOKNAME = "$%03d"
+	AUTOTOKNAME = "T$%03d"
 
 	def __init__(self, grm, dump = False):
 		"""
@@ -707,7 +708,7 @@ class Parser(object):
 		if self.goal in self.emits.keys():
 			return Node(self.goal, self.emits[self.goal], children = ast.res)
 
-		return ast.res
+		return Node(children=ast.res) #Return an empty node with children.
 
 	def traverse(self, node, prePrefix = "pre_", passPrefix = "pass_", postPrefix = "post_", *args, **kwargs):
 		"""
@@ -724,6 +725,9 @@ class Parser(object):
 		:param kwargs: Keyword arguments passed to these functions as **kwargs.
 		"""
 		def perform(prefix, loop = None, *args, **kwargs):
+			if not (node.emit or node.symbol):
+				return False
+
 			if loop is not None:
 				kwargs["_loopIndex"] = loop
 
@@ -749,51 +753,26 @@ class Parser(object):
 
 			return False
 
-		if node is None:
-			return
+		# Pre-processing function
+		perform(prePrefix, *args, **kwargs)
 
-		if isinstance(node, Node):
-			# Pre-processing function
-			perform(prePrefix, *args, **kwargs)
+		# Run through the children.
+		for count, i in enumerate(node.children):
+			self.traverse(i, prePrefix, passPrefix, postPrefix, *args, **kwargs)
 
-			for cnt, i in enumerate(node.children):
-				self.traverse(i, prePrefix, passPrefix, postPrefix, *args, **kwargs)
+			# Pass-processing function
+			perform(passPrefix, loop=count, *args, **kwargs)
 
-				# Pass-processing function
-				perform(passPrefix, loop=cnt, *args, **kwargs)
+		# Post-processing function
+		if not perform(postPrefix, *args, **kwargs):
 
-			# Post-processing function
-			if not perform(postPrefix, *args, **kwargs):
-				# Allow for post-process function in the emit info.
-				if callable(self.emits[node.key]):
-					self.emits[node.key](node, *args, **kwargs)
-				elif self.emits[node.key]:
-					print(self.emits[node.key])
+			# Allow for post-process function in the emit info.
+			if callable(self.emits[node.key]):
+				self.emits[node.key](node, *args, **kwargs)
 
-		elif isinstance(node, list):
-			for item in node:
-				self.traverse(item, prePrefix, passPrefix, postPrefix, *args, **kwargs)
-
-		else:
-			raise ValueError()
-
-	def dump(self, node, level = 0):
-		if node is None:
-			return
-
-		if isinstance(node, Node):
-			print("%s%s" % (level * " ", str(node)))
-
-			for child in node.children:
-				self.dump(child, level + 1)
-
-		elif isinstance(node, list):
-			for item in node:
-				self.dump(item)
-
-		else:
-			raise ValueError()
-
+			# Else, just dump the emitting value.
+			elif self.emits[node.key]:
+				print(self.emits[node.key])
 
 if __name__ == "__main__":
 	import argparse, sys
@@ -881,4 +860,4 @@ if __name__ == "__main__":
 			ast = None
 
 		if ast:
-			p.dump(ast)
+			ast.dump()

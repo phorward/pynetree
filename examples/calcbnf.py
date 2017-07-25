@@ -18,5 +18,5 @@ p = Parser("""	%skip /\\s+/;
 				e$: add | sub | t;
 """)
 
-p.dump(p.parse("123 + 456 * 789"))
+p.parse("123 + 456 * 789").dump()
 

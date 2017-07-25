@@ -85,7 +85,7 @@ parameter_list	:	parameter_list ',' expression
 
 # "99-Bottles-of-Beer" implemented in XPL:
 
-p.dump(p.parse("""
+p.parse("""
 if( ( bottles = prompt( "Enter number of bottles [default=99]" ) ) == "" )
     bottles = 99;
 
@@ -112,4 +112,4 @@ while( bottles > 0 )
     else
         print( bottles + " more bottles of beer on the wall." );
 }
-"""))
+""").dump()

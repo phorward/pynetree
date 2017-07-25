@@ -14,4 +14,4 @@ p = Parser("""	@int /[0-9]+/;
 				e: add | t;
 			""")
 
-p.dump(p.parse("1 + 2 * (3+4) +  5"))
+p.parse("1 + 2 * (3+4) +  5").dump()

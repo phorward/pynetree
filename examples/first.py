@@ -14,4 +14,4 @@ p = Parser({
 p.ignore(r"\s+")
 p.token("INT", r"\d+")
 
-p.dump(p.parse("1 + 2 * (3 + 4) + 5"))
+p.parse("1 + 2 * (3 + 4) + 5").dump()
