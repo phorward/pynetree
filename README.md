@@ -10,9 +10,10 @@ Parsing is the process of transferring input matching a particular grammar, like
 
 The following Python example using pynetree defines a simple two-function calculator as an expression language, runs a parser on it, and dumps out the generated abstract syntax tree.
 	
-	from pynetree import Parser
+```python
+	import pynetree
 	
-	p = Parser("""
+	p = pynetree.Parser("""
 		%skip /\s+/;
 		@int /\d+/;
 	
@@ -26,7 +27,8 @@ The following Python example using pynetree defines a simple two-function calcul
 	""")
 	
 	p.parse("1 + 2 * ( 3 + 4 ) * 5").dump()
-	
+```
+
 When this program is run from a console, a proper abstract syntax tree will
 be generated and printed, which shows the hierarchical structure of the parsed
 expression.
@@ -123,6 +125,7 @@ To walk on such an AST, the function `pynetree.Node.dump()` can be used to print
 
 When higher AST traversal features are required for a pynetree parser, it is recommended to sub-class `pynetree.Parser` into a more specific class, serving as some kind of compiler or interpreter, like this example:
 
+```python
 	import pynetree
 
 	class Calculator(pynetree.Parser):
@@ -169,7 +172,7 @@ When higher AST traversal features are required for a pynetree parser, it is rec
 
 	c = Calculator()
 	c.traverse(c.parse("1337 - 42 + 23"))
-
+```
 
 Please do also take a look at the many examples provided with pynetree to get familiar with these functions and possibilities.
 
@@ -177,9 +180,9 @@ Please do also take a look at the many examples provided with pynetree to get fa
 
 pynetree is developed and maintained by Jan Max Meyer, Phorward Software Technologies.
 
-pynetree is the result of a several years experience in parser development tools, and is currently worked out as some kind of sister-project of the (Phorward Toolkit/libphorward)[https://github.com/phorward/phorward], a  parsing a lexical analysis toolkit implementing LR/LALR parsers and focusing on the C programming language. Therefore, the BNF-styled grammar definition language of both pynetree and libphorward are similar and provide the same interface for both parser development tools.
+pynetree is the result of a several years experience in parser development tools, and is currently worked out as some kind of sister-project of the [Phorward Toolkit/libphorward](https://github.com/phorward/phorward), a  parsing a lexical analysis toolkit implementing LR/LALR parsers and focusing on the C programming language. Therefore, the BNF-styled grammar definition language of both pynetree and libphorward are similar and provide the same interface for both parser development tools.
 
-# Licensing
+# License
 
 Copyright (C) 2015-2017 by Jan Max Meyer, Phorward Software Technologies.
 
