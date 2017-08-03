@@ -4,7 +4,7 @@
 pynetree: A light-weight parsing toolkit written in pure Python.
 """
 
-__version__ = "0.5"
+__version__ = "0.6"
 __license__ = "MIT"
 __status__ = "Beta"
 __author__ = "Jan Max Meyer"
@@ -774,7 +774,7 @@ class Parser(object):
 			elif self.emits[node.key]:
 				print(self.emits[node.key])
 
-if __name__ == "__main__":
+def main():
 	import argparse, sys
 
 	ap = argparse.ArgumentParser(
@@ -861,3 +861,6 @@ if __name__ == "__main__":
 
 		if ast:
 			ast.dump()
+
+if __name__ == "__main__":
+	main()

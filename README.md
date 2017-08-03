@@ -48,7 +48,7 @@ add
 pynetree also provides a handy command-line tool to rapidly prototype grammars. The next command just generates the same parser as the example program from above.
 
 ```
-$ ./pynetree.py "@int /[0-9]+/; f: int | '(' e ')'; t: @mul( t '*' f ) | f; e: @add( e '+' t ) | t;" 
+$ pynetree "@int /[0-9]+/; f: int | '(' e ')'; t: @mul( t '*' f ) | f; e: @add( e '+' t ) | t;"
 ```
 
 # Requirements
@@ -185,7 +185,7 @@ Please do also take a look at the many examples provided with pynetree to get fa
 
 pynetree is developed and maintained by Jan Max Meyer, Phorward Software Technologies.
 
-pynetree is the result of a several years experience in parser development tools, and is currently worked out as some kind of sister-project of the [Phorward Toolkit/libphorward](https://github.com/phorward/phorward), a  parsing a lexical analysis toolkit implementing LR/LALR parsers and focusing on the C programming language. Therefore, the BNF-styled grammar definition language of both pynetree and libphorward are similar and provide the same interface for both parser development tools.
+It is the result of a several years experience in parser development tools, and is currently worked out as some kind of sister-project of the [Phorward Toolkit/libphorward](https://github.com/phorward/phorward), a  parsing a lexical analysis toolkit implementing LR/LALR parsers and focusing on the C programming language. Therefore, the BNF-styled grammar definition language of both pynetree and libphorward are similar and provide the same interface for both parser development tools.
 
 # License
 
