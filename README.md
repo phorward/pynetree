@@ -1,8 +1,10 @@
-**pynetree**: *A light-weight parsing toolkit written in pure Python*
+# pynetree
 
 ![Image of a Tree](pine.jpg)
 
-# About
+**pynetree**  is a light-weight parsing toolkit written in pure Python.
+
+## About
 
 **pynetree** is both a Python library and a command-line utility for parsing.
 
@@ -51,35 +53,29 @@ pynetree also provides a handy command-line tool to rapidly prototype grammars. 
 $ pynetree "@int /[0-9]+/; f: int | '(' e ')'; t: @mul( t '*' f ) | f; e: @add( e '+' t ) | t;"
 ```
 
-# Requirements
+## Requirements
 
 pynetree is written in pure Python. It runs natively with any Python >= 2.5.
 
 The only import done so far is the build-in `re` module for regular expression support. Nothing more is required!
 
-# Features
+## Features
 
-pynetree so far provides
-
-- A top-down packrat parser with support of direct and indirect left recursive grammars.
-- Mostly linear parsing time, even for left-recursive grammars due a powerful memorization algorithm.
-- Grammars can be expressed as dict objects or by a BNF-grammar.
+- Top-down packrat parser with support of direct and indirect left recursive grammars.
+- Mostly linear parsing time, even for left-recursive grammars.
+- Grammars can be expressed as dict objects or using a BNF-like language.
 - Support functions for generating and traversing abstract syntax trees (AST).
 - Lexical analysis can be performed via regular expressions (re), string or by Python callables.
 
-Please check out http://pynetree.org to get help and the newest updates on the pynetree project.
+The parser has been developed in the course of implementing a top-down parser supporting left-recursive grammars. Therefore, pynetree is a parser that implements a modified version of the packrat parsing algorithm, but with the approach to provide true BNF-styled grammars, as known from other parser development tools and frameworks. The used algorithm is described in the paper [Packrat Parsers Can Support Left Recursion \[2007\]](http://www.vpri.org/pdf/tr2007002_packrat.pdf) by Warth, Douglass and Millstein.
 
-The pynetree project is under heavy development, so that changes in API, function names, syntax or semantics may occur and need existing projects to be ported.
-
-It has been developed in the course of implementing a top-down parser supporting left-recursive grammars. Therefore, pynetree is a parser that implements a modified version of the packrat parsing algorithm, but with the approach to provide true BNF-styled grammars, as known from other parser development tools and frameworks.
-
-# Getting started
+## Getting started
 
 pynetree is not a parser generator in classic terms like yacc or bison. It
 can be seen as a library to directly express and parse the desired grammar
 within Python code.
 
-## Command-line interface
+### Command-line interface
 
 Nevertheless, a command-line interface is provided for rapidly grammar
 prototyping and testing.
@@ -102,7 +98,7 @@ optional arguments:
 'grammar' and 'input' can be either supplied as strings or files.
 ```
 
-## Using it as a library
+### Using it as a library
 
 For using pynetree in a Python script, it simply is required to create an object of the class `pynetree.Parser`.
 
@@ -181,15 +177,21 @@ c.traverse(c.parse("1337 - 42 + 23"))
 
 Please do also take a look at the many examples provided with pynetree to get familiar with these functions and possibilities.
 
-# Author
+## Author
 
 pynetree is developed and maintained by Jan Max Meyer, Phorward Software Technologies.
 
-It is the result of a several years experience in parser development tools, and is currently worked out as some kind of sister-project of the [Phorward Toolkit/libphorward](https://github.com/phorward/phorward), a  parsing a lexical analysis toolkit implementing LR/LALR parsers and focusing on the C programming language. Therefore, the BNF-styled grammar definition language of both pynetree and libphorward are similar and provide the same interface for both parser development tools.
+It is the result of a several years experience in parser development tools, and is currently worked out as a fun project.
 
-# License
+Some other projects by the author are:
 
-Copyright (C) 2015-2017 by Jan Max Meyer, Phorward Software Technologies.
+- [libphorward](https://github.com/phorward/phorward), a C toolkit for LR parsing, lexical analysis, regular expressions and more.
+- [UniCC](https://github.com/phorward/unicc), a LALR(1) parser generator generating parsers in different programming languages.
+
+
+## License
+
+Copyright (C) 2015-2018 by Jan Max Meyer, Phorward Software Technologies.
 
 You may use, modify and distribute this software under the terms and conditions of the MIT license. The full license terms are provided in the LICENSE file.
 
