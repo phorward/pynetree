@@ -1,1 +1,1 @@
-from pynetree import main, Parser, ParseError, Node
+from .pynetree import main, Parser, ParseError, Node
